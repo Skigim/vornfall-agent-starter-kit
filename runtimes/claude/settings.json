@@ -3,6 +3,8 @@
   "effortLevel": "__EFFORT__",
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": ["vornfall"],
+  "claudeMdExcludes": ["**/.claude/CLAUDE.md"],
+  "autoMemoryEnabled": false,
   "env": {
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false"
   },
@@ -10,8 +12,10 @@
     "allow": ["mcp__vornfall"],
     "deny": [
       "Bash", "PowerShell", "Read", "Glob", "Grep", "Write", "Edit", "NotebookEdit",
-      "WebFetch", "WebSearch", "Agent", "Task", "Workflow", "Skill", "SlashCommand",
-      "CronCreate", "RemoteTrigger", "ScheduleWakeup", "EnterWorktree"
+      "WebFetch", "WebSearch", "Agent", "Task", "Workflow", "Skill",
+      "Artifact", "ArtifactComments", "ArtifactData", "DesignSync", "SendMessage", "SendUserFile",
+      "PushNotification", "Monitor", "TaskStop", "ListAgents",
+      "CronCreate", "CronDelete", "RemoteTrigger", "ScheduleWakeup", "EnterWorktree", "ExitWorktree"
     ]
   }
 }

@@ -3,9 +3,34 @@
   "label": "Claude Code",
   "cli": "claude",
   "instructions_file": "CLAUDE.md",
-  "wake": ["{cli}", "-p", "--strict-mcp-config", "--mcp-config=.mcp.json"],
-  "register": ["{cli}", "-p", "--no-session-persistence", "--strict-mcp-config", "--mcp-config=.mcp.bootstrap.json"],
-  "probe": ["{cli}", "-p", "--strict-mcp-config"],
+  "wake": [
+    "{cli}",
+    "-p",
+    "--strict-mcp-config",
+    "--mcp-config=.mcp.json",
+    "--tools",
+    "",
+    "--allowedTools",
+    "mcp__vornfall"
+  ],
+  "register": [
+    "{cli}",
+    "-p",
+    "--no-session-persistence",
+    "--strict-mcp-config",
+    "--mcp-config=.mcp.bootstrap.json",
+    "--tools",
+    "",
+    "--allowedTools",
+    "mcp__vornfall"
+  ],
+  "probe": [
+    "{cli}",
+    "-p",
+    "--strict-mcp-config",
+    "--tools",
+    ""
+  ],
   "prompt_via": "stdin",
   "files": {
     ".mcp.json": "mcp.json",
@@ -13,6 +38,11 @@
     ".claude/settings.json": "settings.json"
   },
   "models_hint": "e.g. claude-opus-5-5 (recommended), claude-sonnet-5",
-  "efforts": ["low", "medium", "high"],
-  "tested": true
+  "efforts": [
+    "low",
+    "medium",
+    "high"
+  ],
+  "tested": true,
+  "notes": "Tested with Claude Code 2.1.283. '--tools \"\"' removes every built-in tool and '--allowedTools mcp__vornfall' permits the game's tools even in a folder Claude Code has not been asked to trust (it ignores a project's permissions.allow there). claudeMdExcludes keeps your personal ~/.claude/CLAUDE.md out of the agent's context; autoMemoryEnabled false turns off auto-memory. The deny list is a second layer for older versions."
 }

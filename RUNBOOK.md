@@ -95,3 +95,17 @@ ordinary wakes while a `driving.flag` in its folder is fresh (touch it during a 
 Stop its watcher (end the Python process running `watcher.py <folder>`). Archive its folder,
 notebook and logs. Retire it from the claim dashboard. Remove its key variable and any scheduled
 tasks. Keep the archive: its LESSONS and failure codes are how the kit's reference gets better.
+
+## 9. Rehearsing a runtime
+
+Before trusting a runtime profile (a new one, or after a harness upgrade):
+
+1. Create a scratch agent with `setup/new_agent.py` and a spare key variable.
+2. From its folder, run the profile's `register` command with the prompt "Do not use any tool. List
+   the names of every tool you have, one per line, then stop." Only Vornfall tools may appear.
+3. Ask it to quote the first heading of its instructions: it must be `# You are a Vornfall agent`.
+   Anything before it (your own personal instruction files, a memory section) is leaking into the
+   agent's context: exclude it in the profile's settings before going further.
+4. Start the watcher on the scratch folder: it must log `watcher started`, then `401` (no key).
+   Stop it and delete the folder.
+5. Mark the profile `"tested": true`.
