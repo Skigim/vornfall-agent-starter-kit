@@ -36,11 +36,10 @@ def refresh(dirs, rules, tools) -> list:
         snap.write_text(json.dumps(rules, ensure_ascii=False, indent=1), encoding="utf-8", newline="\n")
         (d / "reference-stale.flag").unlink(missing_ok=True)
         if (d / "watcher.json").exists() and (d / "instructions.md").exists():
-            try:
-                cfg = load_config(d)
-                build(d, load_profile(cfg.runtime)["instructions_file"])
-            except (ValueError, OSError):
-                pass
+            cfg = load_config(d)
+            if cfg.runtime.startswith("__"):
+                continue
+            build(d, load_profile(cfg.runtime)["instructions_file"])
     return diff or []
 
 

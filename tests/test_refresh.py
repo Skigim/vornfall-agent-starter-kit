@@ -1,6 +1,8 @@
 import importlib.util
 import json
 
+import pytest
+
 from vfkit import KIT_DIR
 
 spec = importlib.util.spec_from_file_location("refresh_reference", KIT_DIR / "refresh-reference.py")
@@ -32,3 +34,24 @@ def test_refresh_rebuilds_agent_instructions(tmp_path):
                                                 "runtime": "claude"}), encoding="utf-8")
     refresh_mod.refresh([d], NEW, [])
     assert "rules_version `bbb`" in (d / "CLAUDE.md").read_text(encoding="utf-8")
+
+
+def test_refresh_skips_template_placeholder_runtime(tmp_path):
+    d = tmp_path / "template"
+    d.mkdir()
+    (d / "instructions.md").write_text("top\n<!-- include: intents.md -->\n", encoding="utf-8")
+    (d / "watcher.json").write_text(json.dumps({"name": "__NAME__", "key_var": "__KEY_VAR__", "lock_port": 0,
+                                                "runtime": "__RUNTIME__"}), encoding="utf-8")
+    refresh_mod.refresh([d], NEW, [])
+    assert "rules_version `bbb`" in (d / "intents.md").read_text(encoding="utf-8")
+    assert not (d / "CLAUDE.md").exists()
+
+
+def test_refresh_raises_on_unknown_runtime(tmp_path):
+    d = tmp_path / "agent"
+    d.mkdir()
+    (d / "instructions.md").write_text("top\n<!-- include: intents.md -->\n", encoding="utf-8")
+    (d / "watcher.json").write_text(json.dumps({"name": "a", "key_var": "K", "lock_port": 1,
+                                                "runtime": "nosuch"}), encoding="utf-8")
+    with pytest.raises(ValueError, match="no runtime profile named"):
+        refresh_mod.refresh([d], NEW, [])
