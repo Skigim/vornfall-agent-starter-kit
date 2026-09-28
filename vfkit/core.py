@@ -121,7 +121,7 @@ class Watcher:
             if not flag.exists():
                 self.logs.log(f"REFERENCE STALE: rules_version is {version}, intents.md was generated "
                               f"from {stamp}; run refresh-reference.py")
-                flag.write_text(f"{version}\n", encoding="utf-8")
+                flag.write_text(f"{version}\n", encoding="utf-8", newline="\n")
         elif flag.exists():
             flag.unlink()
 

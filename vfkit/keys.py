@@ -69,6 +69,6 @@ def store_key(var: str, value: str) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     stored = _read_keys_file()
     stored[var] = value
-    path.write_text("".join(f"{k}={v}\n" for k, v in stored.items()), encoding="utf-8")
+    path.write_text("".join(f"{k}={v}\n" for k, v in stored.items()), encoding="utf-8", newline="\n")
     path.chmod(0o600)
     return str(path)

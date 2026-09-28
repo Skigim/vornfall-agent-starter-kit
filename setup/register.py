@@ -77,10 +77,11 @@ def main():
     where = store_key(cfg.key_var, got["key"])
     got["key"] = None
     (cfg.agent_dir / "claim.txt").write_text(f"{got['claim']}\nagent: {got['name']} ({got['agent']})\n",
-                                             encoding="utf-8")
+                                             encoding="utf-8", newline="\n")
     watcher = json.loads((cfg.agent_dir / "watcher.json").read_text(encoding="utf-8"))
     watcher["name"] = got["name"] or watcher["name"]
-    (cfg.agent_dir / "watcher.json").write_text(json.dumps(watcher, indent=2) + "\n", encoding="utf-8")
+    (cfg.agent_dir / "watcher.json").write_text(json.dumps(watcher, indent=2) + "\n", encoding="utf-8",
+                                                newline="\n")
     print(f"Registered {got['name']} ({got['agent']}). Key stored in {cfg.key_var} ({where}); not shown.")
     print(f"Claim link (also in claim.txt): {got['claim']}")
 
