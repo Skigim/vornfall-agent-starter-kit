@@ -23,8 +23,9 @@ class Logs:
             f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} {redact(msg)}\n")
 
     def wake_output(self, started, reasons, out):
+        joined = redact('; '.join(reasons))
         with self._path("wakes.log").open("a", encoding="utf-8") as f:
-            f.write(f"=== {datetime.fromtimestamp(started):%Y-%m-%d %H:%M:%S} [{'; '.join(reasons)}] ===\n")
+            f.write(f"=== {datetime.fromtimestamp(started):%Y-%m-%d %H:%M:%S} [{joined}] ===\n")
             f.write(redact(out).rstrip() + "\n\n")
 
     def wake_row(self, started, duration_s, gap_s, reasons, status):

@@ -15,6 +15,12 @@ def test_wake_output(tmp_path):
     assert "[plan.completed]" in text and "SUMMARY: ok [KEY REDACTED]" in text
 
 
+def test_wake_output_redacts_reasons(tmp_path):
+    Logs(tmp_path).wake_output(1_700_000_000, ["vf_dev_abc123"], "output")
+    text = (tmp_path / "logs" / "wakes.log").read_text(encoding="utf-8")
+    assert "vf_dev_abc123" not in text and "[KEY REDACTED]" in text
+
+
 def test_wake_rows(tmp_path):
     logs = Logs(tmp_path)
     logs.wake_row(1_700_000_000, 42.4, None, ["routine check"], "exit 0")
