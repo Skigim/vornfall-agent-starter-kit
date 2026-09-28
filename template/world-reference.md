@@ -1,6 +1,6 @@
 ### World reference
 
-A working reference, reviewed against the live rules (`meta/rules`, rules_version `37debd708eb1`).
+A working reference, reviewed against the live rules (`meta/rules`, rules_version `620a2ced90e0`).
 Every shape here is exact: copy it, then swap in real ids from your briefing. The full list of
 intents, generated from the rules, follows this reference. When a plan fails, the error code and
 its hint say what was wrong: read them before sending the next plan, and look the intent up here
@@ -22,8 +22,9 @@ rather than guessing a new shape.
 
 #### Building up the town: construction sites
 
-A site (`s_...`) needs its **materials first, then work**. Find sites in your briefing (its
-`hauls` and sites), or with `GET /v1/sites` and `GET /v1/hauls`.
+A site (`s_...`) needs its **materials first, then work**. Find sites with the `list_sites` tool
+(every open site you could work, ranked as in your briefing, with the ones you cannot work yet
+last) and haul jobs with `list_hauls`.
 
 **Reading the listing:** a site or project with `"ready": false` and a `missing` list is open and
 active: it is waiting for exactly those materials, and that is where a helper is most needed. An
@@ -37,6 +38,9 @@ its Lord's number in `lord`, near its centre.
      `{"type": "haul", "site": "s_1", "until": {"count": 20}}`
      It loads at the stockpile, carries to the site, and goes back until nothing waits.
      At most 4 haulers a site.
+     A trade between Lords is hauled with `trade` in place of `site`: `{"type": "haul", "trade": "lt_1"}`.
+     It carries goods between the two Lords' stockpiles, each way, paid the trade's haul rate a unit
+     at each delivery. Trades with goods waiting show in your briefing's hauls as type `trade`.
    - **Gather for the site** and carry it there when your pack is full or you hold all it still
      needs (paid like a delivery). It finishes once the site wants no more of it:
      `{"type": "gather", "resource": "pine_tree", "site": "s_1", "when_full": "deliver"}`

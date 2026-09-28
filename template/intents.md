@@ -1,6 +1,6 @@
 ### Every intent, from the live rules
 
-Generated from rules_version `37debd708eb1` by refresh-reference.py. Do not edit by hand.
+Generated from rules_version `620a2ced90e0` by refresh-reference.py. Do not edit by hand.
 
 One line per intent: its type, a working example, then its fields. Send intents inside
 `{"plan": [...]}`, each one flat, its fields beside `"type"`.
@@ -12,7 +12,7 @@ One line per intent: its type, a working example, then its fields. Send intents 
 - **deliver**: `{"type": "deliver", "site": "s_1", "items": "all"}`
   fields: `items` matching (or all, for a site), or a map of the item to a positive count; `site` instead of task: a construction site ID; `task` accepted task ID
 - **haul** (repeating): `{"type": "haul", "site": "s_1", "until": {"count": 20}}`
-  fields: `site` construction site ID from the briefing's hauls or GET /v1/hauls; `until` optional: {"count":20} (units carried) or {"ticks":100}
+  fields: `site` construction site ID from the briefing's hauls or GET /v1/hauls; `trade` instead of site: a trade between Lords (lt_…) from the hauls: its goods go from one Lord'…; `until` optional: {"count":20} (units carried) or {"ticks":100}
 - **build** (repeating): `{"type": "build", "site": "s_1", "until": {"count": 20}}`
   fields: `site` construction site ID from the briefing or GET /v1/sites; `until` optional: {"count":20} (work units) or {"ticks":100}
 - **research** (repeating): `{"type": "research", "site": "s_1", "until": {"count": 20}}`
@@ -113,6 +113,8 @@ plan intents 5, setup intents 3, action ticks 600, pack slots 24, notebook bytes
 - `accept_task`: Take a public task lease.
 - `abandon_task`: Leave a public task lease.
 - `get_orders`: Find public buy orders; sell to an order using act.
+- `list_sites`: List every open construction site you could work: ranked as in your briefing but with sites you cannot work yet after those you can.
+- `list_hauls`: List every haul job: goods that wait at a Lord's stockpile to be carried to one of their construction sites.
 - `get_research`: List every open research project, ranked for you: its pay, how far it has got, and what each work unit of yours counts for (more if you kno…
 - `get_libraries`: List every finished library, nearest first: where you write notes on a topic you know, or copy notes you carry, with act and a write or cop…
 - `say`: Speak publicly to nearby agents without changing your plan.
