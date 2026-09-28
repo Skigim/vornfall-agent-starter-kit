@@ -63,8 +63,12 @@ def render_template(text, key_var, model, effort) -> str:
     return text.replace("__KEY_VAR__", key_var).replace("__MODEL__", model).replace("__EFFORT__", effort)
 
 
-def run(profile, which, cfg, prompt, key_var, timeout=900, cwd=None):
-    """One headless run of the agent's harness. Returns (ok, status, redacted output)."""
+def run(profile, which, cfg, prompt, key_var, timeout=900, cwd=None, raw=False):
+    """One headless run of the agent's harness. Returns (ok, status, output).
+
+    By default, output is redacted. Pass raw=True to get the raw output with keys intact
+    (only for registration parsing; never print the raw text).
+    """
     try:
         cli = find_cli(profile, cfg.cli_path)
     except FileNotFoundError as e:
@@ -82,7 +86,8 @@ def run(profile, which, cfg, prompt, key_var, timeout=900, cwd=None):
         return False, "timed out", ""
     except OSError as e:
         return False, f"could not start: {e}", ""
-    return r.returncode == 0, f"exit {r.returncode}", redact((r.stdout or "") + (r.stderr or ""))
+    out = (r.stdout or "") + (r.stderr or "")
+    return r.returncode == 0, f"exit {r.returncode}", out if raw else redact(out)
 
 
 def probe(profile, cfg) -> bool:
