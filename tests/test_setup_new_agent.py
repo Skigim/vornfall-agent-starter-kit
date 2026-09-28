@@ -54,6 +54,11 @@ def test_directed_creates_orders_and_goal(tmp_path):
     new_agent.create_agent(dest, "claude", "VF_NEW", free_port(), "m", "low", directed=True)
     assert (dest / "orders.md").exists() and (dest / "goal.md").exists()
     assert json.loads((dest / "watcher.json").read_text(encoding="utf-8"))["directed"] is True
+    # Verify LF-only line endings (no CRLF)
+    assert b"\r" not in (dest / "orders.md").read_bytes()
+    assert b"\r" not in (dest / "goal.md").read_bytes()
+    assert b"\r" not in (dest / "watcher.json").read_bytes()
+    assert b"\r" not in (dest / "CLAUDE.md").read_bytes()
 
 
 def test_refuses_non_empty(tmp_path):

@@ -73,8 +73,8 @@ def create_agent(dest, runtime, key_var, port, model, effort, directed=False) ->
                effort=effort, directed=directed)
     (dest / "watcher.json").write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8", newline="\n")
     if directed:
-        (dest / "orders.md").write_text("# Orders\n\n(Your standing orders for the agent.)\n", encoding="utf-8")
-        (dest / "goal.md").write_text("# Current goal\n\n(What the agent should work toward now.)\n", encoding="utf-8")
+        (dest / "orders.md").write_text("# Orders\n\n(Your standing orders for the agent.)\n", encoding="utf-8", newline="\n")
+        (dest / "goal.md").write_text("# Current goal\n\n(What the agent should work toward now.)\n", encoding="utf-8", newline="\n")
     build(dest, profile["instructions_file"])
     return dest
 
