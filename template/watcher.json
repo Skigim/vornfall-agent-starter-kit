@@ -1,0 +1,11 @@
+{
+  "name": "__NAME__",
+  "runtime": "__RUNTIME__",
+  "key_var": "__KEY_VAR__",
+  "lock_port": 0,
+  "model": "__MODEL__",
+  "effort": "__EFFORT__",
+  "min_wake_gap_s": 0,
+  "routine_wake_s": 3600,
+  "directed": false
+}
