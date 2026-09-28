@@ -14,7 +14,7 @@ class WakePolicy:
         self.recent = []
         self.challenges = []
 
-    def admit(self, reasons, urgent=False, gap=True):
+    def admit(self, reasons, urgent=False, gap=True) -> tuple[list[str] | None, str]:
         now = self.clock()
         if urgent:
             self.challenges = [t for t in self.challenges if now - t < 3600]
@@ -33,12 +33,17 @@ class WakePolicy:
         if not urgent:
             self.recent = [t for t in self.recent if now - t < 3600]
             if len(self.recent) >= self.max_per_hour:
-                return None, f"hourly wake cap reached; deferring: {'; '.join(merged)}"
+                new = [r for r in reasons if r not in self.held]
+                note = ""
+                if new:
+                    note = f"hourly wake cap reached; deferring: {'; '.join(merged)}"
+                self.held = merged
+                return None, note
             self.recent.append(now)
         self.held = []
         return merged, ""
 
-    def woke(self):
+    def woke(self) -> None:
         self.last_wake = self.clock()
 
     def held_due(self) -> bool:

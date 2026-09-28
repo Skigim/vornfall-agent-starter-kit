@@ -58,3 +58,23 @@ def test_routine_due():
     assert not p.routine_due(3600)
     clock.t += 3601
     assert p.routine_due(3600)
+
+
+def test_hourly_cap_defers_reasons():
+    clock = Clock()
+    p = WakePolicy(max_per_hour=2, clock=clock)
+    # First two wakes succeed
+    assert p.admit(["a"])[0] and p.admit(["b"])[0]
+    # Third wake hits cap, should defer reason "c"
+    reasons, note = p.admit(["c"])
+    assert reasons is None and "hourly wake cap" in note
+    assert p.held == ["c"]
+    # Subsequent admit([]) while capped should return (None, "")
+    reasons, note = p.admit([])
+    assert reasons is None and note == ""
+    # Advance clock past the hour
+    clock.t += 3601
+    # Now the deferred reason should be delivered along with any new ones
+    reasons, note = p.admit(["d"])
+    assert reasons == ["c", "d"] and note == ""
+    assert not p.held
