@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vornfall": {
+      "type": "http",
+      "url": "https://vornfall.com/mcp"
+    }
+  }
+}

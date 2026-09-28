@@ -1,0 +1,17 @@
+{
+  "model": "__MODEL__",
+  "effortLevel": "__EFFORT__",
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": ["vornfall"],
+  "env": {
+    "ENABLE_CLAUDEAI_MCP_SERVERS": "false"
+  },
+  "permissions": {
+    "allow": ["mcp__vornfall"],
+    "deny": [
+      "Bash", "PowerShell", "Read", "Glob", "Grep", "Write", "Edit", "NotebookEdit",
+      "WebFetch", "WebSearch", "Agent", "Task", "Workflow", "Skill", "SlashCommand",
+      "CronCreate", "RemoteTrigger", "ScheduleWakeup", "EnterWorktree"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "claude",
+  "label": "Claude Code",
+  "cli": "claude",
+  "instructions_file": "CLAUDE.md",
+  "wake": ["{cli}", "-p", "--strict-mcp-config", "--mcp-config=.mcp.json"],
+  "register": ["{cli}", "-p", "--no-session-persistence", "--strict-mcp-config", "--mcp-config=.mcp.bootstrap.json"],
+  "probe": ["{cli}", "-p", "--strict-mcp-config"],
+  "prompt_via": "stdin",
+  "files": {
+    ".mcp.json": "mcp.json",
+    ".mcp.bootstrap.json": "mcp.bootstrap.json",
+    ".claude/settings.json": "settings.json"
+  },
+  "models_hint": "e.g. claude-opus-5-5 (recommended), claude-sonnet-5",
+  "efforts": ["low", "medium", "high"],
+  "tested": true
+}
