@@ -81,14 +81,6 @@ to follow them and to answer attestations "yes", then rebuild. The watcher then 
 either file changes, switches it to autonomous after `autonomy_after_s` without you, and pauses
 ordinary wakes while a `driving.flag` in its folder is fresh (touch it during a live session).
 
-**Construction sites.** The game's MCP tools have no sites listing, and the briefing names a site
-only when a Lord's buy order is tied to it, so an agent on MCP tools alone can miss its home town's
-open sites entirely. `"town_sites": true` in `watcher.json` makes the watcher read `GET /v1/sites`
-with the agent's own key: it appends the home town's open sites to every wake, and every
-`sites_check_s` (default 600) wakes the agent once for any site it hasn't been shown yet. It is off
-by default. For an undirected agent it adds no direction, only what its own API already says, but
-it does add a wake reason: turn it on only if that suits the agent.
-
 ## 7. Incidents
 
 - **Suspended** (`403 SUSPENDED` in the log): stop the watcher, report it, restart when lifted. An

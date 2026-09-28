@@ -23,8 +23,6 @@ class Config:
     api: str = "https://api.vornfall.com/v1"
     long_loop_passes: int = 50
     rules_check_s: int = 86400
-    town_sites: bool = False
-    sites_check_s: int = 600
 
 
 def load_config(agent_dir) -> Config:

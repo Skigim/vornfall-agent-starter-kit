@@ -8,7 +8,6 @@ from .directed import Directed
 from .events import challenge_waiting, count_passes, ended_on_failure, failures, has_hold, wake_reasons
 from .policy import WakePolicy
 from .reference import reference_stamp
-from .sites import digest, home_town, town_sites
 
 WAIT_S = 50
 MODEL_DOWN_FIRST_S = 10 * 60
@@ -42,7 +41,6 @@ class Watcher:
         self.backoff = 5
         self.next_rules_check = 0.0
         self.next_loop_check = 0.0
-        self.next_sites_check = 0.0
 
     def _load(self) -> dict:
         try:
@@ -72,11 +70,6 @@ class Watcher:
         gap_s = started - self.policy.last_wake if self.policy.last_wake else None
         mode = self.directed.mode_line() if self.directed else ""
         prompt = BASE_PROMPT + mode + "The watcher woke you because: " + "; ".join(reasons) + "\n"
-        if self.cfg.town_sites:
-            text, ids = self.read_sites()
-            if ids is not None:
-                prompt += text
-                self.state["site_ids"] = sorted(ids)
         ok, status, out = self.waker(prompt)
         duration = self.clock() - started
         self.logs.wake_output(started, reasons, out)
@@ -146,32 +139,6 @@ class Watcher:
         self.state["loops_flagged"] = flagged
         self.save()
 
-    def read_sites(self):
-        """(digest, site ids) for the home town's open sites; (None, None) if the lookup failed."""
-        try:
-            town = home_town(self.api("/towns", timeout=30))
-            if not town:
-                return "", set()
-            sites = town_sites(self.api("/sites", timeout=30), town.get("lord_id"))
-        except Exception as e:
-            self.logs.log(f"sites lookup failed: {type(e).__name__}: {e}")
-            return None, None
-        return digest(town, sites), {s.get("id") for s in sites}
-
-    def check_sites(self):
-        """Wake reasons for sites opened in the home town since the last look (every open site on
-        the first look, since the agent may not know of them)."""
-        known = self.state.get("site_ids")
-        _, ids = self.read_sites()
-        if ids is None:
-            return []
-        self.state["site_ids"] = sorted(ids)
-        self.save()
-        new = sorted(ids - set(known or []))
-        if not new:
-            return []
-        return ["construction sites open in your home town that you may not know of: " + ", ".join(new)]
-
     def step(self):
         now = self.clock()
         if now >= self.next_rules_check:
@@ -192,12 +159,6 @@ class Watcher:
             if change:
                 self.save()
                 self.do_wake(change[0], gap=change[1])
-                return
-        if self.cfg.town_sites and now >= self.next_sites_check:
-            self.next_sites_check = now + self.cfg.sites_check_s
-            reasons = self.check_sites()
-            if reasons:
-                self.do_wake(reasons)
                 return
         if now >= self.next_loop_check:
             self.next_loop_check = now + LOOP_CHECK_S
