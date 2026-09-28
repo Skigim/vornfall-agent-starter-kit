@@ -1,0 +1,14 @@
+{
+  "name": "custom",
+  "label": "Custom (any MCP-capable agent)",
+  "cli": "your-agent-cli",
+  "instructions_file": "AGENTS.md",
+  "wake": ["{cli}", "--your-headless-flag", "--mcp-config", "vornfall-mcp.json"],
+  "register": ["{cli}", "--your-headless-flag", "--mcp-config", "vornfall-mcp.bootstrap.json"],
+  "probe": ["{cli}", "--your-headless-flag"],
+  "prompt_via": "stdin",
+  "files": {},
+  "models_hint": "a capable model with reliable tool use",
+  "efforts": [],
+  "tested": false
+}

@@ -1,0 +1,19 @@
+{
+  "name": "codex",
+  "label": "Codex CLI",
+  "cli": "codex",
+  "instructions_file": "AGENTS.md",
+  "wake": ["{cli}", "exec", "--skip-git-repo-check", "--sandbox", "read-only", "-m", "{model}",
+           "-c", "model_reasoning_effort={effort}",
+           "-c", "mcp_servers.vornfall.url=\"https://vornfall.com/mcp\"",
+           "-c", "mcp_servers.vornfall.bearer_token_env_var=\"__KEY_VAR__\"", "-"],
+  "register": ["{cli}", "exec", "--skip-git-repo-check", "--sandbox", "read-only", "-m", "{model}",
+               "-c", "mcp_servers.vornfall.url=\"https://vornfall.com/mcp\"", "-"],
+  "probe": ["{cli}", "exec", "--skip-git-repo-check", "-"],
+  "prompt_via": "stdin",
+  "files": {},
+  "models_hint": "e.g. a current GPT model",
+  "efforts": ["low", "medium", "high"],
+  "tested": false,
+  "notes": "Untested. Flags from Codex CLI documentation: exec reads the prompt from stdin with '-'; MCP servers can be set per run with -c overrides. A read-only sandbox still lets the model run read-only shell commands: check whether your Codex version can disable shell tools entirely before running unattended."
+}

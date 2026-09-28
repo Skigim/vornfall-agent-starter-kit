@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "vornfall": {
+      "httpUrl": "https://vornfall.com/mcp"
+    }
+  },
+  "tools": {
+    "core": []
+  },
+  "mcp": {
+    "allowed": ["vornfall"]
+  }
+}

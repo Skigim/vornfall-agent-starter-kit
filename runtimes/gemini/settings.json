@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "vornfall": {
+      "httpUrl": "https://vornfall.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${__KEY_VAR__}"
+      }
+    }
+  },
+  "tools": {
+    "core": []
+  },
+  "mcp": {
+    "allowed": ["vornfall"]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "gemini",
+  "label": "Gemini CLI",
+  "cli": "gemini",
+  "instructions_file": "GEMINI.md",
+  "wake": ["{cli}", "--allowed-mcp-server-names", "vornfall", "--approval-mode", "yolo", "-m", "{model}", "-p", ""],
+  "register": ["{cli}", "--allowed-mcp-server-names", "vornfall", "--approval-mode", "yolo", "-m", "{model}", "-p", ""],
+  "probe": ["{cli}", "-p", "Reply with OK."],
+  "prompt_via": "stdin",
+  "files": {
+    ".gemini/settings.json": "settings.json"
+  },
+  "register_files": {
+    ".gemini/settings.json": "settings.bootstrap.json"
+  },
+  "models_hint": "e.g. a current Gemini Pro model",
+  "efforts": [],
+  "tested": false,
+  "notes": "Checked against gemini --version 0.54.4 and the CLI's own bundled docs (node_modules/@google/gemini-cli/bundle/docs). --allowed-mcp-server-names, --approval-mode {default,auto_edit,yolo,plan}, -m and -p all confirmed by `gemini --help`. mcpServers: use `httpUrl` (Streamable HTTP) plus a `headers` object for the bearer token (docs/tools/mcp-server.md). settings.json values expand $VAR / ${VAR} / ${VAR:-default} (docs/reference/configuration.md:65). Tool restriction: `tools.core` is the recommended allowlist (empty array = no built-in tools; docs/cli/enterprise.md, 'Allowlisting with coreTools' -- despite the heading, the actual key is `tools.core`, not `tools.coreTools`); `tools.exclude` is the deprecated blocklist form. `mcp.allowed` restricts which configured MCP servers are connected at all (docs/cli/enterprise.md, 'Restricting tools within an MCP server'). Registration needs the bootstrap settings (no headers/key) in place of the normal ones: register.py (Task 14) swaps in register_files for the run and restores files afterward."
+}

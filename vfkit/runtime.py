@@ -43,7 +43,7 @@ def find_cli(profile, configured="") -> str:
     raise FileNotFoundError(f"{name} not found on PATH: install it, or set cli_path in watcher.json")
 
 
-def command(profile, which, cli, model="", effort="", prompt="") -> list:
+def command(profile, which, cli, model="", effort="", prompt="", key_var="") -> list:
     values = {"cli": cli, "model": model, "effort": effort, "prompt": prompt}
     out = []
     for arg in profile[which]:
@@ -54,6 +54,7 @@ def command(profile, which, cli, model="", effort="", prompt="") -> list:
             continue
         for k, v in values.items():
             arg = arg.replace(f"{{{k}}}", v)
+        arg = arg.replace("__KEY_VAR__", key_var)
         out.append(arg)
     return out
 
@@ -69,7 +70,7 @@ def run(profile, which, cfg, prompt, key_var, timeout=900, cwd=None):
     except FileNotFoundError as e:
         return False, f"could not start: {e}", ""
     via_arg = profile.get("prompt_via") == "arg"
-    argv = command(profile, which, cli, cfg.model, cfg.effort, prompt if via_arg else "")
+    argv = command(profile, which, cli, cfg.model, cfg.effort, prompt if via_arg else "", key_var=key_var)
     env = dict(os.environ)
     if key_var:
         env[key_var] = get_key(key_var)

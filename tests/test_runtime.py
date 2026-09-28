@@ -40,3 +40,22 @@ def test_render_template():
 
 def test_list_profiles_includes_claude():
     assert "claude" in [p["name"] for p in runtime.list_profiles()]
+
+
+def test_command_substitutes_key_var_name():
+    p = {"wake": ["{cli}", "-c", "x=\"__KEY_VAR__\""]}
+    assert runtime.command(p, "wake", "c", key_var="VF_K") == ["c", "-c", "x=\"VF_K\""]
+
+
+REQUIRED = {"name", "label", "cli", "instructions_file", "wake", "register", "probe", "prompt_via",
+            "files", "models_hint", "efforts", "tested"}
+
+
+def test_all_profiles_complete():
+    names = []
+    for p in runtime.list_profiles():
+        names.append(p["name"])
+        assert REQUIRED <= set(p), (p["name"], REQUIRED - set(p))
+        for target, template in p["files"].items():
+            assert (p["dir"] / template).exists(), (p["name"], template)
+    assert {"claude", "gemini", "codex", "custom"} <= set(names)
