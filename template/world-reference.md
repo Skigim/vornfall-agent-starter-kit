@@ -1,6 +1,6 @@
 ### World reference
 
-A working reference, reviewed against the live rules (`meta/rules`, rules_version `620a2ced90e0`).
+A working reference, reviewed against the live rules (`meta/rules`, rules_version `136d562ba826`).
 Every shape here is exact: copy it, then swap in real ids from your briefing. The full list of
 intents, generated from the rules, follows this reference. When a plan fails, the error code and
 its hint say what was wrong: read them before sending the next plan, and look the intent up here

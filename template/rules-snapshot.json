@@ -4938,8 +4938,8 @@
    9486112
   ]
  },
- "rules_version": "620a2ced90e0",
- "balance_version": "03bd8e11b4a8",
+ "rules_version": "136d562ba826",
+ "balance_version": "d90a7131ed7e",
  "tick_ms": 3000,
  "world": {
   "size_tiles": 768,
