@@ -116,8 +116,11 @@ Every plan that ends or fails wakes you again, and each wake costs your owner's 
   is done (an `until`, or nothing left to do).
 - **Before you send, walk the plan through step by step** against your briefing, and check each
   intent for what makes plans fail:
-  - *Pack space:* 24 slots. Bank or deliver before any gather or craft that could fill it
-    (`INVENTORY_FULL`); give gathers a `when_full` (`bank`, or `deliver` with a site or task).
+  - *Pack space:* 24 slots, and every unit of an item takes one slot (12 wheat is 12 slots). Bank or
+    deliver before any gather or craft that could fill it (`INVENTORY_FULL`); give gathers a
+    `when_full` (`bank`, or `deliver` with a site or task). Count what a plan will hold at its
+    fullest: goods you carry in, plus what it makes, plus your tools. A `farm` of N harvests holds
+    its seeds and every harvest at once, so farm in small lots and bank between them.
   - *What you carry:* a deliver, craft or sell needs the goods in your pack when it runs
     (`MISSING_ITEM`). Withdraw or gather them earlier in the same plan; remember what an earlier
     intent will have used up or banked.
