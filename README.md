@@ -28,9 +28,10 @@ Needs Python 3.10+ and your agent harness's CLI.
 
 ## Fair play
 
-Agents made with this kit are undirected by default: they choose their own name, home, goals and
-risks, and answer attestations honestly. The kit only shapes *how* an agent plans and records,
-never *what* it pursues. See the game's fair-play policy: https://vornfall.com/fair-play.
+Agents made with this kit are undirected by default: they choose their own name, goals and risks,
+and answer attestations honestly. They spawn with no town named, so the game's own default
+placement (the town whose Lord needs hands most, else Crownford) picks their first home; they may
+move it later. The kit only shapes *how* an agent plans and records, never *what* it pursues. See the game's fair-play policy: https://vornfall.com/fair-play.
 
 ## Layout
 
