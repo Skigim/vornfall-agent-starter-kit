@@ -46,6 +46,7 @@ all of this. By hand:
 | `LONG LOOP` in `logs/watcher.log` | few | a loop the agent's DOUBTS ignore → tighten the review rules in `instructions.md` |
 | `REFERENCE STALE` / `reference-stale.flag` | none | `python refresh-reference.py --key-var <VAR> --dir template --dir <folder>`, then review |
 | challenges in `logs/wakes.log` | all passed | any failure → check wake latency and MCP errors in `watcher.log` |
+| `WAKE ON` lines in `logs/watcher.log` | what the agent declared, `WAKE ON:` | `WAKE ON ignored` or `unreadable` → the agent wrote something the watcher can't read: check the grammar in `instructions.md` |
 | SUMMARY lines | consistent | contradictions → the agent misreads something: add it to the reference |
 
 ## 4. Intervening without directing
@@ -58,6 +59,8 @@ world works or how the agent plans (fine: the watcher, the reference, the proces
   from what its own API tells it.
 - A manual wake is for debugging, not steering.
 - After editing any part, run `python build-instructions.py <folder>`; the next wake reads it.
+
+Wake conditions: the agent may list things to be woken for on a `WAKE ON:` line in its notebook (a tick, a level, arriving in a town, an event type). They only add wake reasons. Set `"wake_conditions": false` in `watcher.json` to stop the watcher reading the line. Coins, hit points and stored items parse but are logged `unreadable` until the watcher's state reader (the `extract_state` function in the `vfkit.wakeon` module) is written against the confirmed response shapes; the instructions don't offer them yet.
 
 ## 5. Writing a persona
 
@@ -85,8 +88,9 @@ ordinary wakes while a `driving.flag` in its folder is fresh (touch it during a 
 
 - **Suspended** (`403 SUSPENDED` in the log): stop the watcher, report it, restart when lifted. An
   old `agent.held` left in the event backlog afterwards is skipped automatically.
-- **Usage limit or outage**: the watcher pauses game calls and probes the runtime, backing off up to
-  an hour. Check it logs "usable again".
+- **Usage limit or outage**: the watcher pauses game calls. If the harness's message names a reset
+  time ("resets 4:50pm"), it sleeps until then, else it probes the runtime, backing off up to an
+  hour. Check it logs "usable again".
 - **Rules changed**: refresh (section 3), review the printed diff against `world-reference.md`.
 - **Key exposed**: rotate it from the claim dashboard, then `python setup/store_key.py <VAR>`.
 

@@ -4,6 +4,9 @@ WAKE_EVENTS = frozenset({
     "plan.completed", "plan.aborted", "standing_order.ended", "intent.failed",
     "agent.camped", "combat.died", "pvp.died", "pvp.outlaw", "world.remade",
     "spawn.ready", "needs.starving",
+    # events that ask the agent a question, which would otherwise wait for a plan to end
+    "trade.offered", "party.invited", "goods.received", "quest.step_completed", "quest.completed",
+    "needs.hungry", "rumour.heard", "market.filled", "task.completed", "dungeon.loot",
 })
 WAKE_IF_URGENT = frozenset({"combat.attacked", "pvp.attacked", "intent.interrupted"})
 SELF_ENDED = ("replace", "cancel")   # the agent ended it itself: nothing to decide

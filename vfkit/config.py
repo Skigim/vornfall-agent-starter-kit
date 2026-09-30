@@ -23,6 +23,7 @@ class Config:
     api: str = "https://api.vornfall.com/v1"
     long_loop_passes: int = 50
     rules_check_s: int = 86400
+    wake_conditions: bool = True   # read the agent's WAKE ON line
 
 
 def load_config(agent_dir) -> Config:

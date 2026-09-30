@@ -45,3 +45,9 @@ def test_count_passes():
     assert counts == {"pl_1": 2, "pl_2": 40}
     counts = count_passes([ev("standing_order.ended", plan_id="pl_1"), rep("pl_2")], counts)
     assert counts == {"pl_2": 41}
+
+
+def test_decision_events_wake_with_their_type():
+    events = [ev("trade.offered"), ev("party.invited"), ev("needs.hungry"),
+              ev("goods.received"), ev("skill.level_up", importance="info")]
+    assert wake_reasons(events) == ["trade.offered", "party.invited", "needs.hungry", "goods.received"]

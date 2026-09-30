@@ -5,14 +5,20 @@ import time
 import urllib.error
 
 from .directed import Directed
+from .limits import seconds_until_reset
 from .events import challenge_waiting, count_passes, ended_on_failure, failures, has_hold, wake_reasons
 from .policy import WakePolicy
 from .reference import reference_stamp
+from .wakeon import (EVENT_KINDS, STATE_KINDS, STATE_READABLE, extract_line, extract_state,
+                     fired_by_events, parse_conditions, state_met, time_due)
 
 WAIT_S = 50
 MODEL_DOWN_FIRST_S = 10 * 60
 MODEL_DOWN_MAX_S = 60 * 60
 LOOP_CHECK_S = 10 * 60
+STATE_CHECK_S = 120
+TICK_CHECK_S = 30
+INFO_POLL_PAUSE_S = 5
 CHALLENGE = "challenge.issued: a proof-of-mind challenge is waiting (120 s)"
 BASE_PROMPT = (
     "Wake. Play one turn as described under \"On each wake\" in your instructions.\n"
@@ -41,6 +47,13 @@ class Watcher:
         self.backoff = 5
         self.next_rules_check = 0.0
         self.next_loop_check = 0.0
+        self.next_state_check = 0.0
+        self.next_tick_check = 0.0
+        self.conditions = parse_conditions(" ; ".join(self.wake_on()["texts"]))[0]
+        self.logged = set()
+
+    def wake_on(self) -> dict:
+        return self.state.setdefault("wake_on", {"texts": [], "spent": []})
 
     def _load(self) -> dict:
         try:
@@ -79,7 +92,7 @@ class Watcher:
         self.state["last_wake"] = self.policy.last_wake
         self.save()
         if not ok:
-            self.model_down()
+            self.model_down(out)
             return False
         r = self.api("/events/wait", {"since": pre_cursor, "min_importance": "notable", "timeout_s": 1},
                      timeout=30) if pre_cursor else {}
@@ -87,6 +100,7 @@ class Watcher:
         if r.get("cursor"):
             self.state["cursor"] = r["cursor"]
             self.save()
+        self.refresh_wake_on()
         if challenge_waiting(during) and retry:
             self.logs.log("a challenge is still waiting after the wake; waking once more")
             return self.do_wake([CHALLENGE], urgent=True, retry=False)
@@ -98,15 +112,22 @@ class Watcher:
         self.fail_rewakes = 0
         return True
 
-    def model_down(self):
-        wait = MODEL_DOWN_FIRST_S
-        self.logs.log(f"wake failed: runtime unavailable? pausing all game calls, checking again in {wait // 60} min")
+    def model_down(self, detail=""):
+        backoff = MODEL_DOWN_FIRST_S
+        wait = seconds_until_reset(detail, self.clock())
+        if wait:
+            self.logs.log(f"wake failed: usage limit; it resets in about {wait // 60} min. "
+                          f"Pausing all game calls until then")
+        else:
+            wait = backoff
+            self.logs.log(f"wake failed: runtime unavailable? pausing all game calls, checking again in {wait // 60} min")
         while True:
             self.sleep(wait)
             if self.probe():
                 self.logs.log("model is usable again; resuming")
                 return
-            wait = min(wait * 2, MODEL_DOWN_MAX_S)
+            backoff = min(backoff * 2, MODEL_DOWN_MAX_S)
+            wait = backoff
             self.logs.log(f"runtime still unavailable; checking again in {wait // 60} min")
 
     def check_rules(self):
@@ -124,6 +145,76 @@ class Watcher:
                 flag.write_text(f"{version}\n", encoding="utf-8", newline="\n")
         elif flag.exists():
             flag.unlink()
+
+    def refresh_wake_on(self):
+        """Read the WAKE ON line from the agent's notebook. A line that cannot be read or parsed
+        costs at most a missed extra wake: plan ends and every other wake reason still apply."""
+        if not self.cfg.wake_conditions:
+            return
+        try:
+            line = extract_line(self.api("/me/notebook"))
+        except Exception as e:
+            self.logs.log(f"WAKE ON: notebook not readable ({type(e).__name__}: {e}); keeping what I had")
+            return
+        conditions, problems = parse_conditions(line)
+        for text, why in problems:
+            if (text, why) not in self.logged:
+                self.logged.add((text, why))
+                self.logs.log(f"WAKE ON ignored: {text}: {why}")
+        texts = [c.text for c in conditions]
+        record = self.wake_on()
+        if texts != record["texts"]:
+            self.logs.log("WAKE ON: " + ("; ".join(texts) if texts else "none"))
+        record["texts"] = texts
+        record["spent"] = [t for t in record["spent"] if t in texts]   # absent for one read: re-armed
+        self.conditions = conditions
+        self.save()
+
+    def live_conditions(self):
+        spent = set(self.wake_on()["spent"])
+        return [c for c in self.conditions if c.text not in spent]
+
+    def tick(self):
+        try:
+            tick = (self.status() or {}).get("tick")
+            return int(tick) if tick is not None else None
+        except Exception as e:
+            self.logs.log(f"WAKE ON: could not read the game tick: {type(e).__name__}: {e}")
+            return None
+
+    def read_state(self):
+        return extract_state(self.api("/me"), self.api("/bank"))
+
+    def fired_conditions(self, events) -> list:
+        """One-shot: a condition that fires is spent until it leaves the notebook and returns."""
+        live = self.live_conditions()
+        if not live:
+            return []
+        hit = fired_by_events(live, events)
+        timed = [c for c in live if c.kind == "time"]
+        if timed and self.clock() >= self.next_tick_check:
+            self.next_tick_check = self.clock() + TICK_CHECK_S
+            tick = self.tick()
+            hit += [c for c in timed if time_due(c, tick)]
+        stated = [c for c in live if c.kind in STATE_KINDS]
+        if stated and self.clock() >= self.next_state_check:
+            self.next_state_check = self.clock() + STATE_CHECK_S
+            if not STATE_READABLE:
+                for c in stated:
+                    if ("unreadable", c.text) not in self.logged:
+                        self.logged.add(("unreadable", c.text))
+                        self.logs.log(f"WAKE ON unreadable: {c.text}: the state fields are not known yet")
+            else:
+                try:
+                    state = self.read_state()
+                except Exception as e:
+                    self.logs.log(f"WAKE ON: state not readable ({type(e).__name__}: {e})")
+                    state = {}
+                hit += [c for c in stated if state_met(c, state)]
+        if hit:
+            self.wake_on()["spent"] += [c.text for c in hit]
+            self.save()
+        return [f"your condition fired: {c.text}" for c in hit]
 
     def check_loops(self):
         since = self.state.get("info_cursor") or self.state.get("cursor")
@@ -163,7 +254,9 @@ class Watcher:
         if now >= self.next_loop_check:
             self.next_loop_check = now + LOOP_CHECK_S
             self.check_loops()
-        r = self.api("/events/wait", {"since": self.state["cursor"], "min_importance": "notable",
+        info_poll = any(c.kind in EVENT_KINDS for c in self.live_conditions())
+        r = self.api("/events/wait", {"since": self.state["cursor"],
+                                      "min_importance": "info" if info_poll else "notable",
                                       "timeout_s": WAIT_S}, timeout=WAIT_S + 20)
         self.backoff = 5
         events = r.get("events") or []
@@ -177,16 +270,19 @@ class Watcher:
             self.logs.log("agent.held in this batch; skipping it and checking again")
             self.sleep(60)
             return
+        fired = self.fired_conditions(events)   # before any branch below that ends the step
         if challenge_waiting(events):
-            self.do_wake([CHALLENGE], urgent=True)
+            self.do_wake([CHALLENGE] + fired, urgent=True)
             return
-        reasons = wake_reasons(events)
+        reasons = wake_reasons(events) + fired
         if reasons:
             self.do_wake(reasons)
         elif self.policy.held_due():
             self.do_wake([])
         elif self.policy.routine_due(self.cfg.routine_wake_s):
             self.do_wake([f"routine check: {_human(self.cfg.routine_wake_s)} without a wake"])
+        elif info_poll:
+            self.sleep(INFO_POLL_PAUSE_S)   # the info feed answers at once while the agent is busy
 
     def handle_http(self, e):
         try:
@@ -231,5 +327,6 @@ class Watcher:
 
     def run(self):
         self.logs.log("watcher started")
+        self.refresh_wake_on()
         while True:
             self.run_once()

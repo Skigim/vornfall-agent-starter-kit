@@ -46,6 +46,7 @@ def ev(type_, importance="notable", **data):
 
 
 def make(tmp_path, api, waker=None, probe=None, status=None, **cfg):
+    cfg.setdefault("wake_conditions", False)   # the tests that want it switch it on
     config = Config(agent_dir=tmp_path, name="t", key_var="VF_TEST", lock_port=1, **cfg)
     sleeps = []
     clock = Clock()
@@ -178,3 +179,186 @@ def test_directed_orders_edit(tmp_path):
     w.step()
     assert "your owner updated your orders" in w.waker.prompts[0]
     assert "Mode: DIRECTED" in w.waker.prompts[0]
+
+
+class Routed:
+    """An API that answers by path: the notebook, the events feed, and whatever else is asked."""
+
+    def __init__(self, notebook="", batches=()):
+        self.notebook = notebook
+        self.batches = list(batches)
+        self.calls = []
+
+    def __call__(self, path, params=None, timeout=20):
+        self.calls.append((path, dict(params or {})))
+        if path == "/me/notebook":
+            if isinstance(self.notebook, Exception):
+                raise self.notebook
+            return {"notebook": self.notebook}
+        if path == "/events/wait":
+            if self.batches:
+                return self.batches.pop(0)
+            return {"events": [], "cursor": (params or {}).get("since") or "e_0"}
+        return {}
+
+    def polls(self):
+        return [p for path, p in self.calls if path == "/events/wait"]
+
+
+def conditions_watcher(tmp_path, api, notebook_line, **kw):
+    api.notebook = f"== NOW ==\nWAKE ON: {notebook_line}\n"
+    w, sleeps, clock = make(tmp_path, api, wake_conditions=True, **kw)
+    w.refresh_wake_on()
+    return w, sleeps, clock
+
+
+def test_wake_on_line_is_read_parsed_and_logged(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "t>=500; nonsense; mining>=40")
+    assert [c.text for c in w.conditions] == ["t>=500", "mining>=40"]
+    text = log_text(tmp_path)
+    assert "WAKE ON: t>=500; mining>=40" in text
+    assert "WAKE ON ignored: nonsense: not a condition this watcher knows" in text
+
+
+def test_nothing_is_read_when_conditions_are_off(tmp_path):
+    api = Routed(notebook="WAKE ON: t>=1")
+    w, _, _ = make(tmp_path, api)
+    w.refresh_wake_on()
+    assert api.calls == [] and w.conditions == []
+
+
+def test_unreadable_notebook_keeps_what_was_there(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "t>=500")
+    api.notebook = http_error(500, b"")
+    w.refresh_wake_on()
+    assert [c.text for c in w.conditions] == ["t>=500"]
+    assert "notebook not readable" in log_text(tmp_path)
+
+
+def test_time_condition_fires_once_and_wakes_with_its_text(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "t>=500", status=lambda: {"tick": 600})
+    w.step()
+    assert "your condition fired: t>=500" in w.waker.prompts[0]
+    w.policy.last_wake = w.clock()
+    w.step()
+    assert len(w.waker.prompts) == 1
+
+
+def test_time_condition_waits_for_its_tick(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "t>=500", status=lambda: {"tick": 499})
+    w.step()
+    assert w.waker.prompts == []
+
+
+def test_spent_condition_rearms_after_it_leaves_the_notebook(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "t>=500", status=lambda: {"tick": 600})
+    w.step()
+    assert w.wake_on()["spent"] == ["t>=500"]
+    w.refresh_wake_on()                        # still written, still spent
+    assert w.live_conditions() == []
+    api.notebook = "== NOW ==\nDOUBTS: none\n"
+    w.refresh_wake_on()                        # gone for one read
+    api.notebook = "WAKE ON: t>=500"
+    w.refresh_wake_on()                        # written again
+    assert [c.text for c in w.live_conditions()] == ["t>=500"]
+
+
+def test_level_condition_polls_info_and_fires(tmp_path):
+    lvl = {"events": [ev("skill.level_up", "info", skill="mining", level=40)], "cursor": "e_2"}
+    api = Routed(batches=[lvl])
+    w, _, _ = conditions_watcher(tmp_path, api, "mining>=40")
+    w.step()
+    assert api.polls()[0]["min_importance"] == "info"
+    assert "your condition fired: mining>=40" in w.waker.prompts[0]
+
+
+def test_info_poll_pauses_when_nothing_happens(tmp_path):
+    api = Routed()
+    w, sleeps, _ = conditions_watcher(tmp_path, api, "event=party.invited")
+    w.step()
+    assert w.waker.prompts == [] and sleeps == [5]
+
+
+def test_polls_notable_when_only_a_time_condition_is_declared(tmp_path):
+    api = Routed()
+    w, sleeps, _ = conditions_watcher(tmp_path, api, "t>=500", status=lambda: {"tick": 1})
+    w.step()
+    assert api.polls()[0]["min_importance"] == "notable" and sleeps == []
+
+
+def test_state_condition_is_logged_unreadable_and_does_not_wake(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "coins>=50")
+    w.step()
+    assert w.waker.prompts == []
+    assert "WAKE ON unreadable: coins>=50" in log_text(tmp_path)
+
+
+def test_a_wake_rereads_the_notebook(tmp_path):
+    api = Routed(batches=[{"events": [ev("plan.completed", plan_id="pl_1")], "cursor": "e_2"}])
+    w, _, _ = conditions_watcher(tmp_path, api, "t>=500")
+    api.notebook = "WAKE ON: t>=900"
+    w.step()
+    assert [c.text for c in w.conditions] == ["t>=900"]
+
+
+def test_condition_met_in_a_challenge_batch_is_not_lost(tmp_path):
+    batch = {"events": [ev("skill.level_up", "info", skill="mining", level=40),
+                        ev("challenge.issued", "urgent", challenge={"id": "ch_1"})], "cursor": "e_2"}
+    api = Routed(batches=[batch])
+    w, _, _ = conditions_watcher(tmp_path, api, "mining>=40")
+    w.step()
+    assert CHALLENGE in w.waker.prompts[0] and "your condition fired: mining>=40" in w.waker.prompts[0]
+
+
+def test_game_tick_is_read_at_most_every_thirty_seconds(tmp_path):
+    ticks = []
+    api = Routed()
+    w, _, clock = conditions_watcher(tmp_path, api, "t>=500",
+                                     status=lambda: ticks.append(1) or {"tick": 1})
+    w.step()
+    w.step()
+    assert len(ticks) == 1
+    clock.t += 31
+    w.step()
+    assert len(ticks) == 2
+
+
+def test_usage_limit_sleeps_until_the_reset_time(tmp_path):
+    from datetime import datetime
+    now = datetime(2026, 9, 30, 14, 50).astimezone().timestamp()
+    api = FakeAPI({"events": [ev("plan.completed", plan_id="pl_1")], "cursor": "e_2"})
+    waker = FakeWaker((False, "exit 1", "You've hit your session limit · resets 4:50pm"))
+    w, sleeps, clock = make(tmp_path, api, waker=waker, probe=lambda: True)
+    clock.t = now
+    w.policy.last_wake = now
+    w.step()
+    assert sleeps == [2 * 3600 + 60]
+    assert "usage limit; it resets in about 121 min" in log_text(tmp_path)
+
+
+def test_unreadable_failure_keeps_the_backoff(tmp_path):
+    probes = iter([False, True])
+    api = FakeAPI({"events": [ev("plan.completed", plan_id="pl_1")], "cursor": "e_2"})
+    w, sleeps, _ = make(tmp_path, api, waker=FakeWaker((False, "exit 1", "boom")),
+                        probe=lambda: next(probes))
+    w.step()
+    assert sleeps == [600, 1200]
+
+
+def test_still_limited_after_the_reset_falls_back_to_the_backoff(tmp_path):
+    from datetime import datetime
+    now = datetime(2026, 9, 30, 14, 50).astimezone().timestamp()
+    probes = iter([False, True])
+    api = FakeAPI({"events": [ev("plan.completed", plan_id="pl_1")], "cursor": "e_2"})
+    waker = FakeWaker((False, "exit 1", "limit resets 4:50pm"))
+    w, sleeps, clock = make(tmp_path, api, waker=waker, probe=lambda: next(probes))
+    clock.t = now
+    w.policy.last_wake = now
+    w.step()
+    assert sleeps == [2 * 3600 + 60, 1200]
