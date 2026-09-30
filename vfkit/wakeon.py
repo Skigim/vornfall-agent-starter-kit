@@ -7,11 +7,6 @@ MAX_CONDITIONS = 5
 EVENT_KINDS = ("level", "at", "event")   # matched against the event feed, which is `info` importance
 STATE_KINDS = ("coins", "hp", "bank")    # need a read of the agent's state
 
-# The character and bank responses' field locations are not in the kit's rules snapshot, so
-# extract_state reads nothing yet and the watcher logs state conditions as unreadable. Set this
-# True once extract_state is written against confirmed shapes.
-STATE_READABLE = False
-
 _LINE = re.compile(r"^[ \t]*WAKE ON:[ \t]*(.*)$", re.M)
 _NAME = r"[a-z][a-z_]*"
 _PATTERNS = (
@@ -128,6 +123,17 @@ def state_met(condition, state):
 
 
 def extract_state(me, bank):
-    """Normalise the character and bank responses to {"coins", "hp", "bank": {item: count}}.
-    Nothing is read until their shapes are confirmed (see STATE_READABLE)."""
-    return {}
+    """Normalise GET /v1/me and GET /v1/bank to {"coins", "hp", "bank": {item: count}}, leaving out
+    whatever a response does not carry. Coins are the purse plus the bank; hp is the current value
+    of the [current, max] pair."""
+    state = {}
+    purse, banked = _int((me or {}).get("purse")), _int((bank or {}).get("coins"))
+    if purse is not None and banked is not None:
+        state["coins"] = purse + banked
+    hp = ((me or {}).get("combat") or {}).get("hp")
+    if isinstance(hp, list) and hp and _int(hp[0]) is not None:
+        state["hp"] = _int(hp[0])
+    items = (bank or {}).get("items")
+    if isinstance(items, dict):
+        state["bank"] = {k: v for k, v in items.items() if isinstance(v, int)}
+    return state

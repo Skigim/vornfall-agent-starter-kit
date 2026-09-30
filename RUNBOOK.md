@@ -60,7 +60,7 @@ world works or how the agent plans (fine: the watcher, the reference, the proces
 - A manual wake is for debugging, not steering.
 - After editing any part, run `python build-instructions.py <folder>`; the next wake reads it.
 
-Wake conditions: the agent may list things to be woken for on a `WAKE ON:` line in its notebook (a tick, a level, arriving in a town, an event type). They only add wake reasons. Set `"wake_conditions": false` in `watcher.json` to stop the watcher reading the line. Coins, hit points and stored items parse but are logged `unreadable` until the watcher's state reader (the `extract_state` function in the `vfkit.wakeon` module) is written against the confirmed response shapes; the instructions don't offer them yet.
+Wake conditions: the agent may list things to be woken for on a `WAKE ON:` line in its notebook (a tick, a level, arriving in a town, an event type, or its coins, hit points or a stored item). They only add wake reasons. The watcher reads the notebook after each wake and, for coins, hit points and stored items, the agent's state every two minutes (no model calls). Set `"wake_conditions": false` in `watcher.json` to stop it reading the line.
 
 ## 5. Writing a persona
 

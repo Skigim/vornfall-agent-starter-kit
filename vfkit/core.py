@@ -9,7 +9,7 @@ from .limits import seconds_until_reset
 from .events import challenge_waiting, count_passes, ended_on_failure, failures, has_hold, wake_reasons
 from .policy import WakePolicy
 from .reference import reference_stamp
-from .wakeon import (EVENT_KINDS, STATE_KINDS, STATE_READABLE, extract_line, extract_state,
+from .wakeon import (EVENT_KINDS, STATE_KINDS, extract_line, extract_state,
                      fired_by_events, parse_conditions, state_met, time_due)
 
 WAIT_S = 50
@@ -199,18 +199,18 @@ class Watcher:
         stated = [c for c in live if c.kind in STATE_KINDS]
         if stated and self.clock() >= self.next_state_check:
             self.next_state_check = self.clock() + STATE_CHECK_S
-            if not STATE_READABLE:
-                for c in stated:
-                    if ("unreadable", c.text) not in self.logged:
-                        self.logged.add(("unreadable", c.text))
-                        self.logs.log(f"WAKE ON unreadable: {c.text}: the state fields are not known yet")
-            else:
-                try:
-                    state = self.read_state()
-                except Exception as e:
-                    self.logs.log(f"WAKE ON: state not readable ({type(e).__name__}: {e})")
-                    state = {}
-                hit += [c for c in stated if state_met(c, state)]
+            try:
+                state = self.read_state()
+            except Exception as e:
+                self.logs.log(f"WAKE ON: state not readable ({type(e).__name__}: {e})")
+                state = {}
+            for c in stated:
+                met = state_met(c, state)
+                if met is None and ("unreadable", c.text) not in self.logged:
+                    self.logged.add(("unreadable", c.text))
+                    self.logs.log(f"WAKE ON unreadable: {c.text}: the game did not report it")
+                if met:
+                    hit.append(c)
         if hit:
             self.wake_on()["spent"] += [c.text for c in hit]
             self.save()

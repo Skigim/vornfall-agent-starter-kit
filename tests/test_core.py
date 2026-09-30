@@ -291,12 +291,55 @@ def test_polls_notable_when_only_a_time_condition_is_declared(tmp_path):
     assert api.polls()[0]["min_importance"] == "notable" and sleeps == []
 
 
-def test_state_condition_is_logged_unreadable_and_does_not_wake(tmp_path):
+def state_routes(api, purse=10, banked=20, hp=(10, 10), items=None):
+    base = api.__call__
+
+    def routed(path, params=None, timeout=20):
+        if path == "/me":
+            return {"purse": purse, "combat": {"hp": list(hp)}}
+        if path == "/bank":
+            return {"coins": banked, "items": items if items is not None else {"tin_ore": 7}}
+        return base(path, params, timeout)
+    return routed
+
+
+def test_coins_condition_fires_on_purse_plus_bank(tmp_path):
     api = Routed()
-    w, _, _ = conditions_watcher(tmp_path, api, "coins>=50")
+    w, _, _ = conditions_watcher(tmp_path, api, "coins>=30")
+    w.api = state_routes(api, purse=10, banked=20)
     w.step()
+    assert "your condition fired: coins>=30" in w.waker.prompts[0]
+
+
+def test_hp_and_stored_item_conditions(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "hp<=3; bank:tin_ore>=5; bank:iron_ore>=1")
+    w.api = state_routes(api, hp=(2, 10))
+    w.step()
+    prompt = w.waker.prompts[0]
+    assert "hp<=3" in prompt and "bank:tin_ore>=5" in prompt and "bank:iron_ore>=1" not in prompt
+
+
+def test_state_is_read_at_most_every_two_minutes(tmp_path):
+    api = Routed()
+    w, _, clock = conditions_watcher(tmp_path, api, "coins>=999")
+    reads = []
+    inner = state_routes(api)
+    w.api = lambda path, params=None, timeout=20: (reads.append(path) if path == "/me" else None) or inner(path, params, timeout)
+    w.step()
+    w.step()
+    assert reads == ["/me"]
+    clock.t += 121
+    w.step()
+    assert reads == ["/me", "/me"]
+
+
+def test_state_the_game_does_not_report_is_logged_not_fired(tmp_path):
+    api = Routed()
+    w, _, _ = conditions_watcher(tmp_path, api, "coins>=1")
+    w.step()                                  # Routed answers /me and /bank with {}
     assert w.waker.prompts == []
-    assert "WAKE ON unreadable: coins>=50" in log_text(tmp_path)
+    assert "WAKE ON unreadable: coins>=1" in log_text(tmp_path)
 
 
 def test_a_wake_rereads_the_notebook(tmp_path):

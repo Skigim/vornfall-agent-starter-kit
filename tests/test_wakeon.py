@@ -83,3 +83,18 @@ def test_state_met_and_unreadable():
     assert state_met(hp, state) is False
     assert state_met(bank, state) is False
     assert state_met(coins, {}) is None and state_met(bank, {}) is None
+
+
+def test_extract_state_from_the_game_shapes():
+    from vfkit.wakeon import extract_state
+    me = {"purse": 12, "combat": {"hp": [7, 10], "satiety": 50}}
+    bank = {"coins": 30, "items": {"tin_ore": 4, "bread": 2}}
+    assert extract_state(me, bank) == {"coins": 42, "hp": 7, "bank": {"tin_ore": 4, "bread": 2}}
+
+
+def test_extract_state_leaves_out_what_is_missing():
+    from vfkit.wakeon import extract_state
+    assert extract_state({}, {}) == {}
+    assert extract_state({"purse": 5}, {}) == {}
+    assert extract_state({"combat": {"hp": []}}, {"items": "x"}) == {}
+    assert extract_state(None, None) == {}

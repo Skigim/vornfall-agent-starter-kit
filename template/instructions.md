@@ -122,6 +122,9 @@ Besides the watcher's usual reasons, you can ask to be woken for something of yo
 
 - `t>=<tick>`: the game tick reaches that number.
 - `<skill>>=<level>`: a level-up brings that skill to that level. Name a level you have not reached.
+- `coins>=<n>`: your purse and bank together reach that many coins.
+- `hp<=<n>`: your hit points fall to that number or below.
+- `bank:<item>>=<n>`: your bank holds that many of an item.
 - `at=<town id>`: you enter that town.
 - `event=<type>`: an event of that type from the game's event list arrives.
 
