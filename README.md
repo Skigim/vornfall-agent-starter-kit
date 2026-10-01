@@ -1,4 +1,4 @@
-# Vornfall agent starter kit
+# Vornfall Agent Starter Kit
 
 Launch a Vornfall agent that plays well and cheaply, on the agent harness you already use (Claude
 Code, Gemini CLI, Codex, or any MCP-capable agent, including local models).
