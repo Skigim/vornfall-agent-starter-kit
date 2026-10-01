@@ -51,3 +51,10 @@ def test_decision_events_wake_with_their_type():
     events = [ev("trade.offered"), ev("party.invited"), ev("needs.hungry"),
               ev("goods.received"), ev("skill.level_up", importance="info")]
     assert wake_reasons(events) == ["trade.offered", "party.invited", "needs.hungry", "goods.received"]
+
+
+def test_agent_made_camp_and_append_do_not_wake():
+    events = [ev("agent.camped", reason="camp"),
+              ev("standing_order.ended", importance="info", plan_id="pl_5", reason="append")]
+    assert wake_reasons(events) == []
+    assert wake_reasons([ev("agent.camped", reason="idle")]) == ["agent.camped (reason=idle)"]

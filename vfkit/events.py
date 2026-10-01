@@ -9,7 +9,7 @@ WAKE_EVENTS = frozenset({
     "needs.hungry", "rumour.heard", "market.filled", "task.completed", "dungeon.loot",
 })
 WAKE_IF_URGENT = frozenset({"combat.attacked", "pvp.attacked", "intent.interrupted"})
-SELF_ENDED = ("replace", "cancel")   # the agent ended it itself: nothing to decide
+SELF_ENDED = ("replace", "cancel", "append", "camp")   # the agent did it itself: nothing to decide
 _ENDS = ("plan.completed", "plan.aborted", "standing_order.ended", "intent.failed")
 _FAILS = ("intent.failed", "plan.aborted", "standing_order.ended")
 
