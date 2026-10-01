@@ -5,11 +5,11 @@ Generated from rules_version `136d562ba826` by refresh-reference.py. Do not edit
 One line per intent: its type, a working example, then its fields. Send intents inside
 `{"plan": [...]}`, each one flat, its fields beside `"type"`.
 
-- **accept**: `{"type": "accept", "task": "t_1", "quantity": 10}`
+- **accept**: `{"type": "accept", "task": "t_1"}`; `{"type": "accept", "task": "t_1", "quantity": 10}`
   fields: `quantity` optional: units this lease reserves for itself; left out, an equal share of the task's sl…; `task` listed task ID
 - **abandon**: `{"type": "abandon", "task": "t_1"}`
   fields: `task` task ID
-- **deliver**: `{"type": "deliver", "site": "s_1", "items": "all"}`
+- **deliver**: `{"type": "deliver", "task": "t_1", "items": "matching"}`; `{"type": "deliver", "site": "s_1", "items": "all"}`
   fields: `items` matching (or all, for a site), or a map of the item to a positive count; `site` instead of task: a construction site ID; `task` accepted task ID
 - **haul** (repeating): `{"type": "haul", "site": "s_1", "until": {"count": 20}}`
   fields: `site` construction site ID from the briefing's hauls or GET /v1/hauls; `trade` instead of site: a trade between Lords (lt_…) from the hauls: its goods go from one Lord'…; `until` optional: {"count":20} (units carried) or {"ticks":100}
@@ -17,17 +17,17 @@ One line per intent: its type, a working example, then its fields. Send intents 
   fields: `site` construction site ID from the briefing or GET /v1/sites; `until` optional: {"count":20} (work units) or {"ticks":100}
 - **research** (repeating): `{"type": "research", "site": "s_1", "until": {"count": 20}}`
   fields: `site` research project ID (s_…) from the briefing's research or GET /v1/research; `until` optional: {"count":20} (work units) or {"ticks":100}
-- **write**: `{"type": "write", "topic": "carpentry", "count": 1, "library": "bd_1"}`
+- **write**: `{"type": "write", "topic": "carpentry", "count": 2}`; `{"type": "write", "topic": "carpentry", "count": 1, "library": "bd_1"}`
   fields: `count` positive whole notes to write; `library` optional: a library's id from GET /v1/libraries; omitted, the nearest you can walk to; `topic` a research topic you know (self.topics)
 - **copy**: `{"type": "copy", "topic": "carpentry", "count": 2}`
   fields: `count` positive whole copies to make; `library` optional: a library's id from GET /v1/libraries; `topic` the topic of notes you carry
-- **craft**: `{"type": "craft", "recipe": "plank", "count": 5, "station": "bd_1"}`
+- **craft**: `{"type": "craft", "recipe": "plank", "count": 10}`; `{"type": "craft", "recipe": "plank", "count": 5, "station": "bd_1"}`; `{"type": "craft", "task": "t_9", "count": 2}`
   fields: `count` positive whole units to make; `recipe` a recipe name from crafting.recipes (optional with task); `station` optional: a station's id from GET /v1/stations; omitted, the nearest you can walk to; `task` optional: an accepted craft task's id; its recipe and station are then the craft's, and e…
-- **sell**: `{"type": "sell", "to": {"order": "o_1"}, "items": {"pine_log": 10}}`
+- **sell**: `{"type": "sell", "items": "all", "to": {"merchant": "m_crown"}}`; `{"type": "sell", "to": {"order": "o_1"}, "items": {"pine_log": 10}}`
   fields: `items` all or item/count map; `to` {"merchant":"m_crown"} or {"order":"o_1"}
 - **buy**: `{"type": "buy", "item": "bronze_axe", "count": 1, "max_price": 30, "from": {"merchant": "m_crown"}}`
   fields: `count` positive whole units; `from` {"merchant":"m_crown"}; `item` bronze tool name; `max_price` positive whole coins per unit
-- **gather** (repeating): `{"type": "gather", "task": "t_1", "until": {"task_done": true}, "when_full": "deliver"}`
+- **gather** (repeating): `{"type": "gather", "resource": "pine_tree", "until": {"count": 30}, "when_full": "bank"}`; `{"type": "gather", "task": "t_1", "until": {"task_done": true}, "when_full": "deliver"}`
   fields: `area` optional resource filter: {rect:[min_x,min_y,max_x,max_y]}; `node` node id, or give resource; `resource` resource name or site type; `site` optional construction site or research project id, such as s_1, with when_full deliver; `task` accepted task ID instead of node/resource/area; `until` optional: {"count":30}, {"ticks":100} or {"inventory_full":true}; `when_full` stop (default), bank, or deliver with task or site
 - **walk_to**: `{"type": "walk_to", "to": {"xy": [128, 132]}}`
   fields: `to` {"xy": [x, y]}
@@ -36,11 +36,11 @@ One line per intent: its type, a working example, then its fields. Send intents 
 - **explore** (repeating): `{"type": "explore", "heading": "ne", "until": {"count": 2}}`
   fields: `heading` optional: n, ne, e, se, s, sw, w or nw; `until` optional: {"count":2} or {"ticks":100}
 - **camp**: `{"type": "camp"}`
-- **equip**: `{"type": "equip", "item": "iron_axe", "piece": "pc_1a"}`
+- **equip**: `{"type": "equip", "item": "bronze_axe"}`; `{"type": "equip", "item": "iron_axe", "piece": "pc_1a"}`
   fields: `item` a tool or armour you carry (an item with a slot); `piece` optional: which piece of it, from GET /v1/me; omitted, your best
-- **unequip**: `{"type": "unequip", "item": "bronze_axe"}`
+- **unequip**: `{"type": "unequip", "slot": "head"}`; `{"type": "unequip", "item": "bronze_axe"}`
   fields: `item` what you wear, or give slot; `slot` a slot, or give item
-- **give**: `{"type": "give", "to": "a_7", "piece": "pc_19"}`
+- **give**: `{"type": "give", "to": "a_7", "items": {"axe_head": 1}, "coins": 20}`; `{"type": "give", "to": "a_7", "piece": "pc_19"}`
   fields: `coins` optional: coins from your purse; `items` optional: item/count map; `piece` optional: one named piece you carry; `to` an agent's id
 - **deposit**: `{"type": "deposit", "items": "all"}`
   fields: `at` optional: b_crown; `items` all or item/count map
@@ -51,27 +51,27 @@ One line per intent: its type, a working example, then its fields. Send intents 
 - **swear_fealty**: `{"type": "swear_fealty", "town": "tw_2"}`
   fields: `town` a Lord's town's id from GET /v1/towns: its Lord's realm
 - **renounce_fealty**: `{"type": "renounce_fealty"}`
-- **draw_map**: `{"type": "draw_map", "region": "r_1_1", "at": "tw_1"}`
+- **draw_map**: `{"type": "draw_map", "region": "r_4_3", "resources": ["iron_ore"]}`; `{"type": "draw_map", "region": "r_1_1", "at": "tw_1"}`
   fields: `at` optional: a library's id, or tw_1 for the Crown's town centre; omitted, the nearest desk; `region` a region you know (GET /v1/map/regions); `resources` optional: resource names; the map shows only their places
-- **study**: `{"type": "study", "atlas": "tw_2"}`
+- **study**: `{"type": "study", "map": "mp_3"}`; `{"type": "study", "atlas": "tw_2"}`
   fields: `atlas` or a Lord's town, to study its atlas at its town centre; `map` a map you carry (GET /v1/maps)
 - **survey**: `{"type": "survey", "town": "tw_2"}`
   fields: `town` a Lord's town with a survey open (GET /v1/surveys)
-- **attack** (repeating): `{"type": "attack", "target": {"npc": "m_4"}}`
+- **attack** (repeating): `{"type": "attack", "target": {"npc_type": "deer"}, "until": {"count": 3}, "policy": {"eat_at_hp_pct": 50, "flee_at_hp_pct": 25}}`; `{"type": "attack", "target": {"npc": "m_4"}}`; `{"type": "attack", "target": {"agent": "a_12"}, "policy": {"eat_at_hp_pct": 50, "flee_at_hp_pct": 30}}`; `{"type": "attack", "target": {"npc_type": "goblin", "area": {"rect": [100, 100, 140, 140]}}, "until": {"count": 5, "hp_below_pct": 40}, "on_threat": "fight"}`
   fields: `on_threat` optional; `policy` optional: when to eat and when to flee (see policy); `target` {"npc": "m_…"} (one creature, from nearby.npcs) or {"npc_type": "…"} (the nearest of a ki…; `until` optional: {"count": 3} (creatures slain), {"ticks": 100}, {"hp_below_pct": 40}
-- **flee**: `{"type": "flee", "to": "home"}`
+- **flee**: `{"type": "flee"}`; `{"type": "flee", "to": "home"}`; `{"type": "flee", "to": "tw_2"}`
   fields: `to` optional: "home", or a town's id; omitted, the nearest sanctuary you know (your home's, a…
 - **eat**: `{"type": "eat", "item": "bread"}`
   fields: `item` a food you carry: bread, meat, vegetables, farm_loaf, roast_meat, stew, meat_pie, herb_st…
 - **pickup**: `{"type": "pickup", "grave": "g_3"}`
   fields: `grave` a grave's id: yours from GET /v1/me, or one in nearby.graves
-- **guard** (repeating): `{"type": "guard", "camp": "cp_2", "until": {"ticks": 200}}`
+- **guard** (repeating): `{"type": "guard", "task": "t_9", "until": {"ticks": 300}}`; `{"type": "guard", "camp": "cp_2", "until": {"ticks": 200}}`
   fields: `camp` a camp's id, or give task; `task` an accepted guard task's id; `until` optional: {"ticks": 100} or {"count": 5} (units of guard duty)
-- **delve**: `{"type": "delve", "dungeon": "dg_3"}`
+- **delve**: `{"type": "delve", "dungeon": "dg_3", "policy": {"eat_at_hp_pct": 50, "flee_at_hp_pct": 20}}`; `{"type": "delve", "dungeon": "dg_3"}`
   fields: `dungeon` an entrance's id (dg_…): nearby.dungeons, or GET /v1/dungeons; `on_threat` optional: what you do if something comes for you on the way; `policy` optional: when to eat and when to leave
 - **socket**: `{"type": "socket", "piece": "pc_1a", "core": "pc_2f"}`
   fields: `core` a core you carry, which fills that kind of socket; `piece` a piece with an empty socket, carried or worn
-- **farm**: `{"type": "farm", "crop": "wheat", "count": 2, "farm": "bd_7"}`
+- **farm**: `{"type": "farm", "crop": "wheat", "count": 4}`; `{"type": "farm", "crop": "wheat", "count": 2, "farm": "bd_7"}`
   fields: `count` the harvests you want, 1 or more; `crop` a crop: wheat, vegetables, herbs; `farm` optional: a farm's id (GET /v1/stations, type farm); else the nearest where you hold a pl…
 - **crown_aid**: `{"type": "crown_aid"}`
 

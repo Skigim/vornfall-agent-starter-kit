@@ -50,3 +50,11 @@ def test_parse_mcp_body():
     sse = 'event: message\ndata: {"result": {"tools": []}}\n\n'
     assert parse_mcp_body(sse, "text/event-stream") == {"result": {"tools": []}}
     assert parse_mcp_body("", "application/json") is None
+
+
+def test_intents_md_shows_the_canonical_example_before_variants():
+    rules = {"intents": [{"type": "craft", "example": {"type": "craft", "item": "plank"},
+                          "examples": [{"type": "craft", "item": "plank", "station": "saw"}]}]}
+    line = [l for l in intents_md(rules).splitlines() if l.startswith("- **craft**")][0]
+    assert line == ('- **craft**: `{"type": "craft", "item": "plank"}`; '
+                    '`{"type": "craft", "item": "plank", "station": "saw"}`')

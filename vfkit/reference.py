@@ -32,9 +32,11 @@ def intents_md(rules, tools=()) -> str:
         "",
     ]
     for i in rules.get("intents", []):
-        example = (i.get("examples") or [i.get("example")])[0]
+        variants = i.get("examples") or []
+        example = i.get("example") or (variants[0] if variants else None)
         rep = " (repeating)" if i.get("repeating") else ""
-        lines.append(f"- **{i['type']}**{rep}: `{json.dumps(example, ensure_ascii=False)}`")
+        shown = [example] + [v for v in variants if v != example]
+        lines.append(f"- **{i['type']}**{rep}: " + "; ".join(f"`{json.dumps(e, ensure_ascii=False)}`" for e in shown))
         params = i.get("params") or {}
         if params:
             lines.append("  fields: " + "; ".join(f"`{k}` {_short(v)}" for k, v in params.items()))
