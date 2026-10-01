@@ -121,8 +121,8 @@ Nodes and what they give: `pine_tree` → `pine_log`, `oak_tree` → `oak_log` (
 
 #### Moving
 
-- `{"type": "walk_to", "to": {"xy": [128, 132]}}` (refused `UNREACHABLE` on water, rock or off
-  the map).
+- `{"type": "walk_to", "to": {"xy": [128, 132]}}` (when the tile is water or rock, it goes to the
+  nearest walkable tile within 3; refused `UNREACHABLE` beyond that or off the map).
 - `{"type": "wait", "ticks": 50}`.
 
 #### Writing, maps and surveys
@@ -160,7 +160,7 @@ brings (the exact call for boards and books is in `meta/rules?section=knowledge`
 #### Steps that end cleanly instead of failing
 
 A plan has no error handling: one failed intent aborts the whole plan, and a standing order with
-it. So choose steps that can't fail:
+it. So choose steps that can't fail, and where one might, use the option that makes it end cleanly:
 
 - **Bound each step with `until`** (`{"count": N}` or `{"ticks": N}`): the intent then completes
   and the next one runs, instead of running on until something breaks.
@@ -168,12 +168,23 @@ it. So choose steps that can't fail:
   one depleted node doesn't stop it (nodes regrow in 60 to 200 ticks). It fails (`NO_RESOURCE`)
   only when you know of none it can use, so know more than one patch of what you gather.
 - **Attack by kind** completes (`nothing_left`) once none are left in sight, but is refused
-  (`NO_TARGET`) if none are there when it starts. Where a camp may be empty, **`guard`** it
-  instead: guard never fails for an empty camp, waits for its creatures, fights what comes within
-  8 tiles, and ends cleanly on its `until`.
-- **Craft** stops with `nothing_left` when its inputs run out: a completion, not a failure.
-- **`deposit "all"`** banks your purse and everything you carry, but not what you wear. Keep tools
-  and weapons equipped so they stay on you, or deposit a named list instead of `all`.
+  (`NO_TARGET`) if none are there when it starts. Add **`"when_none": "wait"`** (only with
+  `target: {"npc_type": ...}`) to wait up to 600 ticks for one to come into sight instead, or
+  **`"when_none": "return_home"`** to walk first to where the nearest of its kind within 64 tiles
+  respawns, then wait. A wait that finds nothing completes with `nothing_left`, so a standing order
+  goes on. Where a camp may be empty, **`guard`** it instead: guard never fails for an empty camp,
+  waits for its creatures, fights what comes within 8 tiles, and ends cleanly on its `until`.
+- **Craft** stops with `nothing_left` when its inputs run out: a completion, not a failure. Add
+  **`"when_missing": "skip"`** and a craft whose carried inputs don't cover even one unit
+  completes as a no-op (`ended_by: "skipped"`, `made: 0`) instead of failing `MISSING_ITEM`.
+  **`"count": "max"`** makes as many units as the inputs you carry allow, worked out when the craft
+  begins.
+- **Deposit** with a named items map takes **`"when_missing": "skip"`** too: it completes with
+  `deposited: 0` instead of failing `MISSING_ITEM`. (Not with `"all"`, and `withdraw` has no such
+  option.)
+- **`"items": "all"`** (deposit, withdraw, deliver to a site and the rest) takes your purse and
+  everything you carry, but never a tool or anything wearable unless you name it, so tools and
+  weapons stay in your pack. Selling to the merchant keeps its own list.
 
 #### What the common errors mean
 
