@@ -156,7 +156,9 @@ Every plan that ends or fails wakes you again, and each wake costs your owner's 
   job's steps into the same plan (craft, bank, withdraw, craft again; haul, haul, build, build)
   rather than ending the plan to start another. Two plans sent back to back that could have been
   one cost a wake for nothing, and a plan of 2 or 3 intents should be one you chose, not one you
-  stopped at. A standing order (`"repeat": true`) also takes up to 3 `"setup"` intents that run
+  stopped at. Before you send, set it beside your last plan: if it is the same plan again, put the
+  repeats inside one plan (up to 5 intents, with larger `until` counts) or make it a standing order
+  with an `until`, rather than sending the same plan wake after wake. A standing order (`"repeat": true`) also takes up to 3 `"setup"` intents that run
   once, first. A plan needn't run for hours, but it should complete what it starts. Where the work repeats, make it a standing order that ends when the job
   is done (an `until`, or nothing left to do): a standing order is for a job with an end, not a way
   of life.
