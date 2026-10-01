@@ -6,6 +6,7 @@ from pathlib import Path
 
 STAMP_RE = re.compile(r"rules_version `([0-9A-Za-z]+)`")
 MCP_URL = "https://vornfall.com/mcp"
+GUIDE_URL = "https://vornfall.com/skill.md"
 
 
 def _short(text, n=90) -> str:
@@ -89,6 +90,21 @@ def _get_json(url, key=None, timeout=30) -> dict:
 
 def fetch_rules(api, key) -> dict:
     return _get_json(f"{api}/meta/rules", key)
+
+
+def fetch_guide(url=GUIDE_URL, timeout=30) -> str:
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        return r.read().decode("utf-8").replace("\r\n", "\n")
+
+
+def guide_diff(old, new) -> list:
+    """One line saying whether the joining guide changed, and by how many lines."""
+    if old == new:
+        return []
+    ol, nl = old.splitlines(), new.splitlines()
+    gone = sum(1 for l in ol if l not in set(nl))
+    came = sum(1 for l in nl if l not in set(ol))
+    return [f"vornfall-guide.md changed: {came} lines added, {gone} removed"]
 
 
 def fetch_status(api) -> dict:

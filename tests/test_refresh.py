@@ -26,6 +26,16 @@ def test_refresh_writes_and_diffs(tmp_path):
     assert not (d / "reference-stale.flag").exists()
 
 
+def test_refresh_writes_guide_and_reports_change(tmp_path):
+    d = tmp_path / "agent"
+    d.mkdir()
+    (d / "vornfall-guide.md").write_text("a\nb\n", encoding="utf-8")
+    diff = refresh_mod.refresh([d], OLD, [], guide="a\nc\nd\n")
+    assert diff[-1] == "vornfall-guide.md changed: 2 lines added, 1 removed"
+    assert (d / "vornfall-guide.md").read_text(encoding="utf-8") == "a\nc\nd\n"
+    assert refresh_mod.refresh([d], OLD, [], guide="a\nc\nd\n") == []
+
+
 def test_refresh_rebuilds_agent_instructions(tmp_path):
     d = tmp_path / "agent"
     d.mkdir()
