@@ -36,3 +36,13 @@ def test_no_named_agents_or_vendors():
 def test_watcher_defaults_parse():
     raw = json.loads((TEMPLATE / "watcher.json").read_text(encoding="utf-8"))
     assert raw["min_wake_gap_s"] == 0 and raw["routine_wake_s"] == 3600 and raw["directed"] is False
+
+
+def test_generated_intents_match_snapshot_and_preserve_unicode():
+    from vfkit.reference import intents_md
+    rules = json.loads((TEMPLATE / 'rules-snapshot.json').read_text(encoding='utf-8'))
+    generated = (TEMPLATE / 'intents.md').read_text(encoding='utf-8')
+    body, appendix = generated.split('#### Your game tools', 1)
+    assert body.rstrip() == intents_md(rules).rstrip()
+    assert chr(0x2026) in appendix
+    assert chr(0xe2) + chr(0x20ac) not in appendix

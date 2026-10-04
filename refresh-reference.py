@@ -18,14 +18,15 @@ from vfkit.instructions import build  # noqa: E402
 from vfkit.keys import get_key  # noqa: E402
 from vfkit.reference import (MCP_URL, fetch_guide, fetch_mcp_tools, fetch_rules, guide_diff,  # noqa: E402
                              intents_md, rules_diff)
+from vfkit.storage import atomic_write
 from vfkit.runtime import load_profile  # noqa: E402
 
 API = "https://api.vornfall.com/v1"
 
 
 def refresh(dirs, rules, tools, guide=None) -> list:
-    diff = None
-    guide_changes = None
+    changes = []
+    dirs = list(dirs)
     for d in dirs:
         d = Path(d)
         snap = d / "rules-snapshot.json"
@@ -33,22 +34,23 @@ def refresh(dirs, rules, tools, guide=None) -> list:
             old = json.loads(snap.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             old = {}
-        if diff is None:
-            diff = rules_diff(old, rules) if old else ["no previous snapshot: nothing to compare"]
-        (d / "intents.md").write_text(intents_md(rules, tools), encoding="utf-8", newline="\n")
+        diff = rules_diff(old, rules) if old else ["no previous snapshot: nothing to compare"]
+        changes.extend([f"{d}: {line}" if len(dirs) > 1 else line for line in diff])
+        atomic_write(d / "reference-stale.flag", "reference refresh in progress\n")
+        atomic_write(d / "intents.md", intents_md(rules, tools))
         if guide is not None:
             gp = d / "vornfall-guide.md"
-            if guide_changes is None:
-                guide_changes = guide_diff(gp.read_text(encoding="utf-8") if gp.exists() else "", guide)
-            gp.write_text(guide, encoding="utf-8", newline="\n")
-        snap.write_text(json.dumps(rules, ensure_ascii=False, indent=1), encoding="utf-8", newline="\n")
-        (d / "reference-stale.flag").unlink(missing_ok=True)
+            guide_changes = guide_diff(gp.read_text(encoding="utf-8") if gp.exists() else "", guide)
+            changes.extend([f"{d}: {line}" if len(dirs) > 1 else line for line in guide_changes])
+            atomic_write(gp, guide)
+        atomic_write(snap, json.dumps(rules, ensure_ascii=False, indent=1))
         if (d / "watcher.json").exists() and (d / "instructions.md").exists():
-            cfg = load_config(d)
-            if cfg.runtime.startswith("__"):
-                continue
-            build(d, load_profile(cfg.runtime)["instructions_file"])
-    return (diff or []) + (guide_changes or [])
+            raw = json.loads((d / "watcher.json").read_text(encoding="utf-8"))
+            if raw.get("runtime") != "__RUNTIME__":
+                cfg = load_config(d)
+                build(d, load_profile(cfg.runtime)["instructions_file"])
+        (d / "reference-stale.flag").unlink(missing_ok=True)
+    return changes
 
 
 def main():

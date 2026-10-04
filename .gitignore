@@ -1,3 +1,10 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+registration-output.private
+registration-pending.json
+claim.txt
+watcher-state.json
+logs/
+registration.lock
+.watcher.lock

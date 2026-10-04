@@ -65,3 +65,26 @@ def test_refresh_raises_on_unknown_runtime(tmp_path):
                                                 "runtime": "nosuch"}), encoding="utf-8")
     with pytest.raises(ValueError, match="no runtime profile named"):
         refresh_mod.refresh([d], NEW, [])
+
+
+def test_refresh_reports_later_directory_differences(tmp_path):
+    a, b = tmp_path / 'a', tmp_path / 'b'
+    for folder, rules in ((a, NEW), (b, OLD)):
+        folder.mkdir()
+        (folder / 'rules-snapshot.json').write_text(json.dumps(rules), encoding='utf-8')
+    diff = refresh_mod.refresh([a, b], NEW, [])
+    assert diff == [f"{b}: rules_version aaa -> bbb"]
+
+
+def test_rebuild_failure_preserves_stale_flag(tmp_path, monkeypatch):
+    (tmp_path / 'watcher.json').write_text(json.dumps({'name': 'a', 'key_var': 'K',
+                                                     'lock_port': 1, 'runtime': 'claude'}))
+    (tmp_path / 'instructions.md').write_text('instructions')
+    flag = tmp_path / 'reference-stale.flag'
+    flag.write_text('stale')
+    def fail(*args):
+        raise OSError('rebuild failed')
+    monkeypatch.setattr(refresh_mod, 'build', fail)
+    with pytest.raises(OSError, match='rebuild failed'):
+        refresh_mod.refresh([tmp_path], NEW, [])
+    assert flag.exists()

@@ -14,14 +14,23 @@ class WakePolicy:
         self.recent = []
         self.challenges = []
 
-    def admit(self, reasons, urgent=False, gap=True) -> tuple[list[str] | None, str]:
+    def restore(self, state):
+        self.last_wake = state.get("last_wake", 0.0)
+        for name in ("held", "recent", "challenges"):
+            setattr(self, name, list(state.get(name, [])))
+
+    def snapshot(self):
+        return {name: getattr(self, name) for name in ("last_wake", "held", "recent", "challenges")}
+
+    def admit(self, reasons, urgent=False, gap=True, safety=False) -> tuple[list[str] | None, str]:
         now = self.clock()
         if urgent:
             self.challenges = [t for t in self.challenges if now - t < 3600]
             if len(self.challenges) >= self.max_challenge_per_hour:
-                return None, "challenge wake cap reached; leaving it unshown (an unshown challenge can't fail)"
+                self.held = list(dict.fromkeys(self.held + reasons))
+                return None, "challenge wake cap reached; decision remains pending"
             self.challenges.append(now)
-        elif gap and self.min_gap_s and now - self.last_wake < self.min_gap_s:
+        elif not safety and gap and self.min_gap_s and now - self.last_wake < self.min_gap_s:
             new = [r for r in reasons if r not in self.held]
             note = ""
             if new and not self.held:

@@ -1,6 +1,6 @@
 ### Every intent, from the live rules
 
-Generated from rules_version `136d562ba826` by refresh-reference.py. Do not edit by hand.
+Generated from rules_version `4bf87617a1d9` by refresh-reference.py. Do not edit by hand.
 
 One line per intent: its type, a working example, then its fields. Send intents inside
 `{"plan": [...]}`, each one flat, its fields beside `"type"`.

@@ -4,6 +4,7 @@ own challenge. The key goes straight into the agent's key variable and is never 
 Usage: python setup/register.py --dir AGENT_FOLDER"""
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime
@@ -11,8 +12,9 @@ from datetime import datetime
 import _kit  # noqa: F401
 
 from vfkit.config import load_config
-from vfkit.keys import KEY_RE, has_key, redact, store_key
+from vfkit.keys import KEY_RE, get_key, has_key, redact, store_key
 from vfkit.runtime import load_profile, render_template, run
+from vfkit.storage import atomic_write, exclusive_lock
 
 
 def registration_prompt(declared_model) -> str:
@@ -36,9 +38,11 @@ def _find(pattern, text):
 
 
 def parse_registration(out) -> dict:
-    key = KEY_RE.search(out or "")
-    return {"name": _find(r"NAME:\s*(.+)", out or ""), "agent": _find(r"AGENT:\s*(a_\w+)", out or ""),
-            "key": key.group(0) if key else None,
+    found = {m.group(0) for m in KEY_RE.finditer(out or "")}
+    if len(found) > 1:
+        raise ValueError("multiple different keys in registration output; recover manually")
+    return {"name": _find(r"(?m)^NAME:[ \t]*(.+)$", out or ""), "agent": _find(r"(?m)^AGENT:[ \t]*(a_\w+)[ \t]*$", out or ""),
+            "key": next(iter(found), None),
             "claim": _find(r"(https://vornfall\.com/claim/\S+)", out or "")}
 
 
@@ -49,41 +53,91 @@ def swap_files(dest, profile, cfg, bootstrap):
     for target, template in (files or {}).items():
         if bootstrap or target in (profile.get("register_files") or {}):
             text = (profile["dir"] / template).read_text(encoding="utf-8")
-            (dest / target).write_text(render_template(text, cfg.key_var, cfg.model, cfg.effort),
-                                       encoding="utf-8", newline="\n")
+            atomic_write(dest / target, render_template(text, cfg.key_var, cfg.model, cfg.effort))
+
+
+def recover(cfg, capture, status):
+    """Persist a recovered key before logs or configuration writes can fail."""
+    journal = cfg.agent_dir / "registration-pending.json"
+    if not capture.exists() and journal.exists():
+        saved = json.loads(journal.read_text(encoding="utf-8"))
+        if saved.get("status") == "stored" and get_key(cfg.key_var):
+            journal.unlink()
+            return saved["identity"], "the existing key store"
+    out = capture.read_text(encoding="utf-8", errors="replace") if capture.exists() else ""
+    got = parse_registration(out)
+    if not got["key"]:
+        raise ValueError("Registration outcome is uncertain. Do not register again: the character may exist. "
+                         "Keep registration-pending.json and the private capture for recovery; "
+                         "use a claim link/key rotation if available.")
+    existing = get_key(cfg.key_var)
+    if existing and existing != got["key"]:
+        raise ValueError("A different key is already stored; refusing to overwrite a rotated or another character's key. Recover manually.")
+    where = store_key(cfg.key_var, got["key"])
+    got["key"] = None
+    # Only redacted output reaches the ordinary log, after the key is durable.
+    logs = cfg.agent_dir / "logs"
+    logs.mkdir(exist_ok=True)
+    with (logs / "register.log").open("a", encoding="utf-8") as stream:
+        stream.write(f"=== register {datetime.now():%Y-%m-%d %H:%M:%S} ({status}) ===\n{redact(out)}\n")
+    out = None
+    atomic_write(cfg.agent_dir / "claim.txt", f"{got['claim'] or 'Claim link not captured; use new_claim_link with the recovered character.'}\n"
+                 f"agent: {got['name']} ({got['agent']})\n", private=True)
+    watcher = json.loads((cfg.agent_dir / "watcher.json").read_text(encoding="utf-8"))
+    watcher["name"] = got["name"] or watcher["name"]
+    atomic_write(cfg.agent_dir / "watcher.json", json.dumps(watcher, indent=2) + "\n")
+    atomic_write(journal, json.dumps({"status": "stored", "identity": got}), private=True)
+    capture.unlink(missing_ok=True)
+    journal.unlink(missing_ok=True)
+    return got, where
+
+
+def register_or_recover(cfg):
+    capture = cfg.agent_dir / "registration-output.private"
+    journal = cfg.agent_dir / "registration-pending.json"
+    profile = load_profile(cfg.runtime)
+    if journal.exists() or capture.exists():
+        # Restore the normal configuration after a killed bootstrap process.
+        swap_files(cfg.agent_dir, profile, cfg, bootstrap=False)
+        try:
+            got, where = recover(cfg, capture, "recovered interrupted registration")
+        except ValueError as e:
+            sys.exit(str(e))
+        print(f"Recovered existing character; key stored in {cfg.key_var} ({where}). No registration was sent.")
+        print(f"Claim link: {got['claim'] or 'see claim.txt'}")
+        return
+    if has_key(cfg.key_var):
+        sys.exit(f"{cfg.key_var} already holds a key: this agent is already registered")
+    # Exclusive creation also refuses simultaneous setup in this folder.
+    with journal.open("x", encoding="utf-8") as stream:
+        json.dump({"status": "registration may have started"}, stream)
+        stream.flush()
+        os.fsync(stream.fileno())
+    swap_files(cfg.agent_dir, profile, cfg, bootstrap=True)
+    try:
+        ok, status, out = run(profile, "register", cfg, registration_prompt(cfg.model or cfg.runtime),
+                              key_var="", raw=True, capture_path=capture)
+        out = None
+    finally:
+        swap_files(cfg.agent_dir, profile, cfg, bootstrap=False)
+    try:
+        got, where = recover(cfg, capture, status)
+    except ValueError as e:
+        sys.exit(str(e))
+    if got['name'] and got['agent'] and got['claim']:
+        print(f"Registered {got['name']} ({got['agent']}). Key stored in {cfg.key_var} ({where}); not shown.")
+        print(f"Claim link (also in claim.txt): {got['claim']}")
+    else:
+        print(f"Credential recovered into {cfg.key_var}, but identity metadata is incomplete. "
+              "Use get_character and new_claim_link with this character; do not register again.")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dir", required=True)
     cfg = load_config(ap.parse_args().dir)
-    if has_key(cfg.key_var):
-        sys.exit(f"{cfg.key_var} already holds a key: this agent is already registered")
-    profile = load_profile(cfg.runtime)
-    swap_files(cfg.agent_dir, profile, cfg, bootstrap=True)
-    try:
-        ok, status, out = run(profile, "register", cfg, registration_prompt(cfg.model or cfg.runtime),
-                              key_var="", raw=True)
-    finally:
-        swap_files(cfg.agent_dir, profile, cfg, bootstrap=False)
-    logs = cfg.agent_dir / "logs"
-    logs.mkdir(exist_ok=True)
-    with (logs / "register.log").open("a", encoding="utf-8") as f:
-        f.write(f"=== register {datetime.now():%Y-%m-%d %H:%M:%S} ({status}) ===\n{redact(out)}\n")
-    got = parse_registration(out)
-    out = None  # drop the raw text as soon as the key is out of it
-    if not got["key"]:
-        sys.exit("No key came back, so nothing was stored. See logs/register.log, then run this again.")
-    where = store_key(cfg.key_var, got["key"])
-    got["key"] = None
-    (cfg.agent_dir / "claim.txt").write_text(f"{got['claim']}\nagent: {got['name']} ({got['agent']})\n",
-                                             encoding="utf-8", newline="\n")
-    watcher = json.loads((cfg.agent_dir / "watcher.json").read_text(encoding="utf-8"))
-    watcher["name"] = got["name"] or watcher["name"]
-    (cfg.agent_dir / "watcher.json").write_text(json.dumps(watcher, indent=2) + "\n", encoding="utf-8",
-                                                newline="\n")
-    print(f"Registered {got['name']} ({got['agent']}). Key stored in {cfg.key_var} ({where}); not shown.")
-    print(f"Claim link (also in claim.txt): {got['claim']}")
+    with exclusive_lock(cfg.agent_dir / "registration.lock"):
+        register_or_recover(cfg)
 
 
 if __name__ == "__main__":

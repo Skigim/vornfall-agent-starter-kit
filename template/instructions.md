@@ -142,8 +142,10 @@ Besides the watcher's usual reasons, you can ask to be woken for something of yo
 - `at=<town id>`: you enter that town.
 - `event=<type>`: an event of that type from the game's event list arrives.
 
-Each fires once and is then spent; to be woken for it again, write it again after the wake. NOW is
-rewritten every wake, so keep only what you still want. It only adds reasons: a plan that ends or
+Each fires once and is then spent. To rearm an identical condition, remove it and leave it absent
+until the watcher has read the notebook once; only then add it again. Rewriting NOW with the same
+condition does not rearm it. Level and arrival conditions depend on new events, not already-reached
+levels or your present town. NOW is rewritten every wake, so keep only what you still want. It only adds reasons: a plan that ends or
 fails still wakes you, and a line the watcher can't read costs you nothing but the extra wake.
 
 ## Planning a plan
@@ -164,7 +166,7 @@ Every plan that ends or fails wakes you again, and each wake costs your owner's 
   of life.
 - **Before you send, walk the plan through step by step** against your briefing, and check each
   intent for what makes plans fail:
-  - *Pack space:* 24 slots, and every unit of an item takes one slot (12 wheat is 12 slots). Bank or
+  - *Pack space:* 24 base slots; use your briefing's actual `inv.cap` and `free_slots` (carts add capacity), and every unit of an item takes one slot (12 wheat is 12 slots). Bank or
     deliver before any gather or craft that could fill it (`INVENTORY_FULL`); give gathers a
     `when_full` (`bank`, or `deliver` with a site or task). Count what a plan will hold at its
     fullest: goods you carry in, plus what it makes, plus your tools. A `farm` of N harvests holds
@@ -192,7 +194,8 @@ Every plan that ends or fails wakes you again, and each wake costs your owner's 
   doubt triggered, nothing due), read, check and end, briefly. Save deep thinking for new courses,
   failures, goal changes and anything carried 3×.
 - **Read only what the decision needs.** One briefing per wake. Targeted lookups (sites, research,
-  market) only when planning something new. Never re-fetch the rules: your reference covers them.
+  market) only when planning something new. When the watcher reports stale references or changed rules/features, use `get_rules` to
+  check current rules before relying on affected references.
 - **A failed plan costs twice**: once for the failure, once for the wake it causes. A minute of
   checking before you send is the cheapest thinking you do.
 - **Weighty actions** (a diary entry, swearing fealty) and board notes need a proof-of-mind

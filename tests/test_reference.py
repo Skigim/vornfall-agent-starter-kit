@@ -42,6 +42,7 @@ def test_rules_diff():
         "error added: LEVEL_BAND",
         "error removed: NO_TARGET",
         "limit inventory_slots: 24 -> 28",
+        "error MISSING_ITEM.http: 422 -> null",
     ]
 
 
@@ -58,3 +59,38 @@ def test_intents_md_shows_the_canonical_example_before_variants():
     line = [l for l in intents_md(rules).splitlines() if l.startswith("- **craft**")][0]
     assert line == ('- **craft**: `{"type": "craft", "item": "plank"}`; '
                     '`{"type": "craft", "item": "plank", "station": "saw"}`')
+
+
+def test_recursive_diff_covers_examples_recipes_events_and_sections():
+    old = {"intents": [{"type": "wait", "example": {"ticks": 1}}],
+           "combat": {"den": {"adopt_most": 1}}, "recipes": [{"item": "a"}],
+           "events": [{"type": "changed", "description": "old"}]}
+    new = {"intents": [{"type": "wait", "example": {"ticks": 2}}],
+           "combat": {"den": {"adopt_most": 2}}, "recipes": [{"item": "b"}],
+           "events": [{"type": "changed", "description": "new"}]}
+    diff = rules_diff(old, new)
+    for name in ('intent wait.example.ticks', 'combat.den.adopt_most', 'recipes[0].item', 'events[0].description'):
+        assert any(line.startswith(name + ':') for line in diff)
+
+
+def test_multiline_sse_response():
+    assert parse_mcp_body('event: message\ndata: {"result":\ndata: {"tools": []}}\n\n',
+                          'text/event-stream') == {"result": {"tools": []}}
+
+
+def test_mcp_errors_and_pagination(monkeypatch):
+    import pytest
+    from vfkit import reference
+    responses = iter([('sid', {'result': {}}), ('sid', None),
+                      ('sid', {'result': {'tools': [{'name': 'a'}], 'nextCursor': 'next'}}),
+                      ('sid', {'result': {'tools': [{'name': 'b'}]}})])
+    calls = []
+    def post(url, payload, *args):
+        calls.append(payload)
+        return next(responses)
+    monkeypatch.setattr(reference, 'mcp_post', post)
+    assert reference.fetch_mcp_tools() == [{'name': 'a'}, {'name': 'b'}]
+    assert calls[-1]['params'] == {'cursor': 'next'}
+    monkeypatch.setattr(reference, 'mcp_post', lambda *args: (None, {'error': {'code': -1}}))
+    with pytest.raises(ValueError, match='MCP request failed'):
+        reference.fetch_mcp_tools()

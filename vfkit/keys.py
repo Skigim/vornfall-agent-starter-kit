@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from .storage import atomic_write, exclusive_lock
 
 KEY_RE = re.compile(r"vf_(live|dev)_[A-Za-z0-9_]+")
 VAR_RE = re.compile(r"[A-Z][A-Z0-9_]*")
@@ -67,8 +68,11 @@ def store_key(var: str, value: str) -> str:
         return "the Windows user environment"
     path = keys_file()
     path.parent.mkdir(parents=True, exist_ok=True)
-    stored = _read_keys_file()
-    stored[var] = value
-    path.write_text("".join(f"{k}={v}\n" for k, v in stored.items()), encoding="utf-8", newline="\n")
-    path.chmod(0o600)
+    with exclusive_lock(path.with_suffix('.lock')):
+        # Do not replace a file that cannot be read; that could destroy other keys.
+        if path.exists():
+            path.read_text(encoding="utf-8")
+        stored = _read_keys_file()
+        stored[var] = value
+        atomic_write(path, "".join(f"{k}={v}\n" for k, v in stored.items()), private=True)
     return str(path)

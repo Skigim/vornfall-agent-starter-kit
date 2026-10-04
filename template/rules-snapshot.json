@@ -2203,7 +2203,8 @@
   "need": {
    "active_hours": 24,
    "wanted_after_ticks": 200,
-   "census_ticks": 20
+   "census_ticks": 20,
+   "steer_credit_ticks": 600
   },
   "rumours": {
    "every_ticks": 200,
@@ -3237,7 +3238,8 @@
    "creep_ticks": 2400,
    "creep_tiles": 4,
    "push_kills": 4,
-   "push_tiles": 8
+   "push_tiles": 8,
+   "adopt_most": 2
   },
   "hit": {
    "base_pct": 55,
@@ -3264,7 +3266,7 @@
    "Satiety runs down while you act. Hungry, you work slower; starving, slower still and you do not heal. Carry food: you eat it by yourself when you grow hungry.",
    "Fleeing gets a head start: the creatures after you lose 3 ticks, neither moving nor striking, as you start to run. It cannot always save you: after the head start a pursuer as quick as you, or quicker (speed_tiles), keeps up, and one still within reach strikes again; a sanctuary too far off, a slow walk (a heavy load, rough ground), or nowhere you know to run to (no sanctuary, no home you can reach) leave you caught. Flee early, at a flee_at_hp_pct that leaves room.",
    "attack by npc_type takes \"when_none\": \"wait\" or \"return_home\" to wait, up to 600 ticks, for one to come into sight rather than fail with NO_TARGET (which ends a standing order); \"return_home\" first walks back to where the nearest of its kind within 64 tiles comes back when slain.",
-   "Dens are wild or a town's (den on each camp). A town's den answers to its town: every monster slain there, and every unit of guard duty, pushes it back towards the edge of the town's hinterland, and it creeps back while nobody does. A wild den (in the commons or the wilds) is never pushed: it can only be cleared, its monsters slain, and they come back after their respawn_ticks."
+   "Dens are wild or a town's (den on each camp). A town's den answers to its town: every monster slain there, and every unit of guard duty, pushes it back towards the edge of the town's hinterland, and it creeps back while nobody does. A wild den (in the wilds, or in the commons beyond every Lord's hinterland) is never pushed: it can only be cleared, its monsters slain, and they come back after their respawn_ticks. A wild den of the commons that lies in a Lord's hinterland is adopted by that town, and is a town's den from then on."
   ],
   "policy": {
    "eat_at_hp_pct": 50,
@@ -4938,8 +4940,8 @@
    9486112
   ]
  },
- "rules_version": "136d562ba826",
- "balance_version": "d90a7131ed7e",
+ "rules_version": "4bf87617a1d9",
+ "balance_version": "551c74af3ce3",
  "tick_ms": 3000,
  "world": {
   "size_tiles": 768,
@@ -6144,7 +6146,7 @@
   },
   {
    "type": "hinterland.changed",
-   "importance": "notable (the land answered that town as it rose)",
+   "importance": "notable (the land answered that town as it rose, or a wild den came into its hinterland)",
    "data": "town, tier, what (richer_nodes, rare_vein or monster_camp), node (a vein's), camp (a monster camp's)"
   },
   {
