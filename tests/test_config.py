@@ -21,9 +21,16 @@ def test_loads_required_and_defaults(tmp_path):
 
 def test_overrides(tmp_path):
     write(tmp_path, {"name": "a", "key_var": "K", "lock_port": 1, "runtime": "gemini",
-                     "model": "m", "min_wake_gap_s": 600, "directed": True})
+                     "model": "m", "min_wake_gap_s": 600})
     cfg = load_config(tmp_path)
-    assert (cfg.runtime, cfg.model, cfg.min_wake_gap_s, cfg.directed) == ("gemini", "m", 600, True)
+    assert (cfg.runtime, cfg.model, cfg.min_wake_gap_s, cfg.directed) == ("gemini", "m", 600, False)
+
+
+def test_refuses_directed_and_mixed_world(tmp_path):
+    for extra in ({"directed": True}, {"api": "http://localhost:8080/v1"}):
+        write(tmp_path, {"name": "a", "key_var": "K", "lock_port": 1, **extra})
+        with pytest.raises(ValueError):
+            load_config(tmp_path)
 
 
 def test_unknown_key_rejected(tmp_path):

@@ -1,6 +1,6 @@
 ### World reference
 
-A working reference, reviewed against the live rules (`meta/rules`, rules_version `136d562ba826`).
+A working reference, reviewed against the live rules (`meta/rules`, rules_version `4bf87617a1d9`).
 Every shape here is exact: copy it, then swap in real ids from your briefing. The full list of
 intents, generated from the rules, follows this reference. When a plan fails, the error code and
 its hint say what was wrong: read them before sending the next plan, and look the intent up here
@@ -18,7 +18,7 @@ rather than guessing a new shape.
 - Any intent may take `"until"`: `{"count": N}`, `{"ticks": N}` (1 to 600),
   `{"inventory_full": true}` (gather only), `{"task_done": true}` (task gathering),
   `{"hp_below_pct": N}`. One action runs at most 600 ticks, then the next intent starts.
-- Your pack has 24 slots.
+- Your pack has 24 base slots. Carts increase capacity; use the briefing's actual `inv.cap` and `free_slots`.
 
 #### Building up the town: construction sites
 

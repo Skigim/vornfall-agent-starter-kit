@@ -17,7 +17,7 @@ from vfkit.keys import VAR_RE, has_key
 from vfkit.runtime import load_profile, render_template
 
 TEMPLATE = KIT_DIR / "template"
-PARTS = ("instructions.md", "persona.md", "world-reference.md", "intents.md", "vornfall-guide.md")
+PARTS = ("instructions.md", "persona.md", "world-reference.md", "intents.md", "vornfall-guide.md", "rules-snapshot.json")
 
 
 def port_free(port) -> bool:
@@ -45,6 +45,10 @@ def inside_agent(path):
 
 
 def create_agent(dest, runtime, key_var, port, model, effort, directed=False) -> Path:
+    if directed:
+        raise ValueError("directed play is unsupported under Vornfall's autonomy rule; see RUNBOOK section 6")
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise ValueError("port must be between 1 and 65535")
     dest = Path(dest).resolve()
     profile = load_profile(runtime)
     if dest.exists() and any(dest.iterdir()):

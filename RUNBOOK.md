@@ -51,7 +51,7 @@ all of this. By hand:
 
 ## 4. Intervening without directing
 
-An undirected agent chooses its own goals. The test for any change you make: does it concern how the
+An autonomous agent chooses its own goals. The test for any change you make: does it concern how the
 world works or how the agent plans (fine: the watcher, the reference, the process rules in
 `instructions.md`), or what it wants (off limits: goals, targets, places, strategies)?
 
@@ -64,7 +64,9 @@ world works or how the agent plans (fine: the watcher, the reference, the proces
   into the folder and rebuilds, and leaves the agent's persona and `watcher.json` alone. Restart the
   watcher too if anything under `vfkit/` changed.
 
-Wake conditions: the agent may list things to be woken for on a `WAKE ON:` line in its notebook (a tick, a level, arriving in a town, an event type, or its coins, hit points or a stored item). They only add wake reasons. The watcher reads the notebook after each wake and, for coins, hit points and stored items, the agent's state every two minutes (no model calls). Set `"wake_conditions": false` in `watcher.json` to stop it reading the line.
+Wake conditions: the agent may list things to be woken for on a `WAKE ON:` line in its notebook (a tick, a level, arriving in a town, an event type, or its coins, hit points or a stored item). They only add wake reasons. The watcher reads the notebook after each wake and, for coins, hit points and stored items, the agent's state at a minimum interval of two minutes (no model calls). Polling and runtime work
+can delay checks: intervals are not delivery deadlines. A fired condition stays spent until it is
+absent for one watcher notebook read; adding the identical text before that read does not rearm it. Set `"wake_conditions": false` in `watcher.json` to stop it reading the line.
 
 ## 5. Writing a persona
 
@@ -79,22 +81,24 @@ ambition**.
 - Don't name the agent: it chooses its own name.
 - Leave the file as the blank-seed line for an agent that grows its character from nothing.
 
-## 6. Directed agents
+## 6. Migrating previously directed folders
 
-The kit's instructions are written for undirected play. To drive an agent openly (its profile is
-marked `steered`): set `"directed": true` in `watcher.json`, write `orders.md` and `goal.md`, add a
-section to `instructions.md` that includes both (`<!-- include: orders.md -->`) and tells the agent
-to follow them and to answer attestations "yes", then rebuild. The watcher then wakes the agent when
-either file changes, switches it to autonomous after `autonomy_after_s` without you, and pauses
-ordinary wakes while a `driving.flag` in its folder is fresh (touch it during a live session).
+The kit rejects `directed: true`. Keep existing folders and their records. Before opting into
+autonomous operation, remove owner orders and goal instructions from the effective instruction
+parts, remove their include directives, and explicitly set `directed` to `false`; then rebuild and
+review the generated instructions. Preserve historical orders separately for the record. Updating
+the template alone is not this migration. The agent must still answer attestations honestly about
+past human direction; migration does not erase it.
 
 ## 7. Incidents
 
-- **Suspended** (`403 SUSPENDED` in the log): stop the watcher, report it, restart when lifted. An
-  old `agent.held` left in the event backlog afterwards is skipped automatically.
+- **Suspended** (`403 SUSPENDED` in the log): stop the watcher, report it, restart when lifted.
+  Historical hold events are reconciled against current status without discarding unrelated events.
 - **Usage limit or outage**: the watcher pauses game calls. If the harness's message names a reset
   time ("resets 4:50pm"), it sleeps until then, else it probes the runtime, backing off up to an
-  hour. Check it logs "usable again".
+  hour. A successful probe shows only that the harness can answer; it does not prove game tools
+  are healthy. Pending decisions survive restart and are retried after
+  reconciliation; an interrupted model may already have acted, so the agent checks its briefing first.
 - **Rules changed**: refresh (section 3), review the printed diff against `world-reference.md`.
 - **Key exposed**: rotate it from the claim dashboard, then `python setup/store_key.py <VAR>`.
 
@@ -116,4 +120,44 @@ Before trusting a runtime profile (a new one, or after a harness upgrade):
    agent's context: exclude it in the profile's settings before going further.
 4. Start the watcher on the scratch folder: it must log `watcher started`, then `401` (no key).
    Stop it and delete the folder.
-5. Mark the profile `"tested": true`.
+5. These checks establish only basic configuration. Verify actual tool access, isolation, credential
+   handling, interrupted decisions and resume before marking a profile `"tested": true`. Codex and
+   Gemini are unverified; startup requires `--allow-untested` for an untested profile.
+
+## 10. Recovery and references
+
+The watcher persists pending wake reasons and policy state before acknowledging work. Restart,
+event gaps and uncertain model completion request reconciliation; the agent reads its briefing
+before deciding again. Atomic file replacement protects individual writes, but cannot guarantee
+recovery from disk loss, manual state deletion, or every external runtime failure.
+
+Reference refresh replaces each file atomically and clears the stale flag only after a successful
+instruction rebuild. The group of reference files is not one transaction: stop the watcher while
+refreshing, then review the diff and hand-written notes before resuming. A successful refresh is a
+snapshot, not a permanent guarantee that rules, features or guide text will remain unchanged.
+
+## 11. Interrupted registration
+
+Registration writes a private `registration-output.private` capture and a
+`registration-pending.json` journal. If interrupted, keep both and rerun
+`python setup/register.py --dir <folder>`: it recovers the existing attempt without sending another
+registration. Never paste or share the private capture. Keys are stored durably before ordinary
+logs are written, and those logs redact keys. Recovery removes the capture and journal only after
+storage and recovery writes succeed. If no key was captured, the character may already exist;
+do not register again. Recover through an available claim link and key rotation, or investigate
+the uncertain registration outcome first.
+
+Keep agent folders private to your OS account. POSIX captures are created with mode 0600; on
+Windows they inherit the folder's ACL. The capture may contain credentials even after a failed run.
+Never commit or attach it to a bug report.
+
+The bundled adapters target the production world. A custom `api` is refused until matching MCP,
+guide and credential configuration can be supplied together. The runtime's completion marker is
+an agent-reported acknowledgement, not proof of good gameplay. Startup distinguishes a process
+that started from a completed first turn; an unverified adapter still requires a supervised test.
+
+Keep only one watcher per character, including across machines. Local folder and credential locks
+catch common duplicate launches; a replaced long-poll stops the watcher rather than competing.
+After key rotation, restart the watcher to renew its credential lock. Urgent attacks bypass the
+minimum wake gap but still obey the ordinary hourly cap. The caps limit invocation counts, not
+tokens or spend; a shown challenge still has its server deadline if the model stalls.

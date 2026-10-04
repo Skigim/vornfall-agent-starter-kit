@@ -81,6 +81,29 @@ def rules_diff(old, new) -> list:
     for k in sorted(set(ol) | set(nl)):
         if ol.get(k) != nl.get(k):
             out.append(f"limit {k}: {ol.get(k)} -> {nl.get(k)}")
+    # Keep familiar intent/limit summaries, then recursively cover everything else.
+    def walk(a, b, path):
+        if a == b:
+            return
+        if isinstance(a, dict) and isinstance(b, dict):
+            for key in sorted(set(a) | set(b)):
+                walk(a.get(key), b.get(key), f"{path}.{key}" if path else key)
+        elif isinstance(a, list) and isinstance(b, list):
+            for index in range(max(len(a), len(b))):
+                walk(a[index] if index < len(a) else None,
+                     b[index] if index < len(b) else None, f"{path}[{index}]")
+        else:
+            out.append(f"{path}: {_short(json.dumps(a, ensure_ascii=False))} -> "
+                       f"{_short(json.dumps(b, ensure_ascii=False))}")
+    for t in sorted(oi.keys() & ni.keys()):
+        walk({k: v for k, v in oi[t].items() if k not in ('params', 'notes')},
+             {k: v for k, v in ni[t].items() if k not in ('params', 'notes')}, f"intent {t}")
+    old_errors = {e['code']: e for e in old.get('errors', [])}
+    new_errors = {e['code']: e for e in new.get('errors', [])}
+    for code in sorted(old_errors.keys() & new_errors.keys()):
+        walk(old_errors[code], new_errors[code], f"error {code}")
+    walk({k: v for k, v in old.items() if k not in ('rules_version', 'intents', 'errors', 'limits')},
+         {k: v for k, v in new.items() if k not in ('rules_version', 'intents', 'errors', 'limits')}, '')
     return out
 
 
@@ -117,10 +140,16 @@ def parse_mcp_body(body, content_type):
     if not body.strip():
         return None
     if "text/event-stream" in (content_type or ""):
-        datas = [line[5:].strip() for line in body.splitlines() if line.startswith("data:")]
-        body = datas[-1] if datas else ""
-        if not body:
-            return None
+        messages, data = [], []
+        for line in body.splitlines() + ['']:
+            if line.startswith('data:'):
+                data.append(line[5:].lstrip(' '))
+            elif not line and data:
+                messages.append(json.loads('\n'.join(data)))
+                data = []
+        # Notifications may accompany a response; choose the last response.
+        replies = [m for m in messages if isinstance(m, dict) and ('result' in m or 'error' in m)]
+        return replies[-1] if replies else None
     return json.loads(body)
 
 
@@ -140,7 +169,28 @@ def fetch_mcp_tools(url=MCP_URL, key=None) -> list:
     init = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
             "params": {"protocolVersion": "2025-03-26", "capabilities": {},
                        "clientInfo": {"name": "vornfall-kit", "version": "1"}}}
-    sid, _ = mcp_post(url, init, key)
+    def result(response):
+        if not isinstance(response, dict) or 'error' in response:
+            raise ValueError(f"MCP request failed: {(response or {}).get('error', 'missing response') if isinstance(response, dict) or response is None else 'invalid response'}")
+        if not isinstance(response.get('result'), dict):
+            raise ValueError('MCP request returned no result object')
+        return response['result']
+    sid, response = mcp_post(url, init, key)
+    result(response)
     mcp_post(url, {"jsonrpc": "2.0", "method": "notifications/initialized"}, key, sid)
-    _, resp = mcp_post(url, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, key, sid)
-    return ((resp or {}).get("result") or {}).get("tools") or []
+    tools, cursor, seen = [], None, set()
+    while True:
+        payload = {"jsonrpc": "2.0", "id": 2 + len(seen), "method": "tools/list"}
+        if cursor:
+            payload['params'] = {'cursor': cursor}
+        _, response = mcp_post(url, payload, key, sid)
+        page = result(response)
+        if not isinstance(page.get('tools'), list):
+            raise ValueError('MCP tools/list returned no tools list')
+        tools.extend(page['tools'])
+        cursor = page.get('nextCursor')
+        if not cursor:
+            return tools
+        if cursor in seen:
+            raise ValueError('MCP tools/list repeated a pagination cursor')
+        seen.add(cursor)

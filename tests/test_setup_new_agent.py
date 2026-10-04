@@ -49,16 +49,11 @@ def test_create_claude_agent(tmp_path):
     assert not (dest / "orders.md").exists()
 
 
-def test_directed_creates_orders_and_goal(tmp_path):
+def test_directed_is_refused_without_creating_a_folder(tmp_path):
     dest = tmp_path / "d"
-    new_agent.create_agent(dest, "claude", "VF_NEW", free_port(), "m", "low", directed=True)
-    assert (dest / "orders.md").exists() and (dest / "goal.md").exists()
-    assert json.loads((dest / "watcher.json").read_text(encoding="utf-8"))["directed"] is True
-    # Verify LF-only line endings (no CRLF)
-    assert b"\r" not in (dest / "orders.md").read_bytes()
-    assert b"\r" not in (dest / "goal.md").read_bytes()
-    assert b"\r" not in (dest / "watcher.json").read_bytes()
-    assert b"\r" not in (dest / "CLAUDE.md").read_bytes()
+    with pytest.raises(ValueError, match="directed"):
+        new_agent.create_agent(dest, "claude", "VF_NEW", free_port(), "m", "low", directed=True)
+    assert not dest.exists()
 
 
 def test_refuses_non_empty(tmp_path):

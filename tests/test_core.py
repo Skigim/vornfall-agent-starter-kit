@@ -83,11 +83,11 @@ def test_plan_completed_wakes_with_detail(tmp_path):
     assert w.state["cursor"] == "e_2"
 
 
-def test_agent_held_skips_batch(tmp_path):
+def test_old_agent_hold_requests_reconciliation(tmp_path):
     api = FakeAPI({"events": [ev("agent.held"), ev("plan.completed")], "cursor": "e_2"})
     w, sleeps, _ = make(tmp_path, api)
     w.step()
-    assert w.waker.prompts == [] and sleeps == [60]
+    assert "reconcile" in w.waker.prompts[0] and "plan.completed" in w.waker.prompts[0]
 
 
 def test_quiet_then_routine(tmp_path):
@@ -147,7 +147,7 @@ def test_long_loop_flagged_once(tmp_path):
     assert log_text(tmp_path).count("LONG LOOP: pl_9") == 1
 
 
-def test_rules_check_flags_and_clears(tmp_path):
+def test_rules_check_flags_until_operator_refresh_completes(tmp_path):
     (tmp_path / "intents.md").write_text("Generated from rules_version `abc` by x\n", encoding="utf-8")
     versions = iter([{"rules_version": "def"}, {"rules_version": "abc"}])
     w, _, _ = make(tmp_path, FakeAPI(), status=lambda: next(versions))
@@ -155,7 +155,7 @@ def test_rules_check_flags_and_clears(tmp_path):
     assert (tmp_path / "reference-stale.flag").exists()
     assert "REFERENCE STALE" in log_text(tmp_path)
     w.check_rules()
-    assert not (tmp_path / "reference-stale.flag").exists()
+    assert (tmp_path / "reference-stale.flag").exists()
 
 
 def test_not_spawned_wakes_to_spawn(tmp_path):

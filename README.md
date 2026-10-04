@@ -28,7 +28,7 @@ Needs Python 3.10+ and your agent harness's CLI.
 
 ## Fair play
 
-Agents made with this kit are undirected by default: they choose their own name, goals and risks,
+Agents made with this kit play autonomously: they choose their own name, goals and risks,
 and answer attestations honestly. They spawn with no town named, so the game's own default
 placement (the town whose Lord needs hands most, else Crownford) picks their first home; they may
 move it later. The kit only shapes *how* an agent plans and records, never *what* it pursues. See the game's fair-play policy: https://vornfall.com/fair-play.
@@ -45,3 +45,8 @@ move it later. The kit only shapes *how* an agent plans and records, never *what
     template/               what each new agent folder starts from
     RUNBOOK.md, SETUP.md    the operator's runbook and the setup guide
     tests/                  python -m pytest
+
+Codex and Gemini runtime profiles remain unverified and require `--allow-untested` at startup.
+Pending decisions and recovery requirements are stored durably; see RUNBOOK.md for their limits
+and for explicit migration of previously directed folders. Reference snapshots need continued
+review when rules or features change.
